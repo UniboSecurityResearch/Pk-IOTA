@@ -3,9 +3,11 @@
 
 # This example shows how to listen to MQTT events of a node.
 
+from codecs import utf_16_decode
 import json
 import os
 import threading
+import codecs
 
 from dotenv import load_dotenv
 
@@ -26,7 +28,14 @@ received_10_events = threading.Event()
 def callback(event):
     """Callback function for the MQTT listener"""
     event_dict = json.loads(event)
-    print(event_dict)
+    testo = event_dict.split('data')
+    #Filtering only from the data part on, of the json
+    data_part = testo[2]
+    #Trimming the string to obtain only the clean data hex
+    cert_hex = data_part[7:].split('}')[0][:-2]
+    #Decode of the hex certificate
+    cert_utf = codecs.decode(cert_hex, "hex").decode("utf-8")
+    print(cert_utf)
     # pylint: disable=global-statement
     global received_events
     received_events += 1
