@@ -9,6 +9,9 @@ import os
 import threading
 import codecs
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 from dotenv import load_dotenv
 
 from iota_sdk import Client
@@ -34,9 +37,34 @@ def callback(event):
     #Trimming the string to obtain only the clean data hex
     cert_hex = data_part[7:].split('}')[0][:-2]
     #Decode of the hex certificate
-    cert_utf = codecs.decode(cert_hex, "hex").decode("utf-8")
-    print(cert_utf)
+    cert_utf = codecs.decode(cert_hex, "hex")
+    #Separating signature and certificate; signature will be 1024 hex characters (sha-256)
+    sig=cert_utf[-1024:]
+    cert_fin = cert_utf[:-1024]
     # pylint: disable=global-statement
+
+    #Verification of the signature
+    err_enc = b"questo testo dara errore nella verifica"
+    # DA CAMBIARE: caricamento diretto della public key
+    with open("jwtRS256.key", "rb") as key_file:
+        priv_key = serialization.load_pem_private_key(
+            key_file.read(),
+            password=None,
+        )
+    public_key = priv_key.public_key()
+    try:
+        public_key.verify(
+            sig,
+            cert_fin,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+    except:
+        print("[ERROR]: Invalid signature!")
+    
     global received_events
     received_events += 1
     if received_events > 10:

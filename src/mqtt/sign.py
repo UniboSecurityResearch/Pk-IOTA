@@ -25,5 +25,7 @@ err_enc = pv_buf.encode('utf-8')
 sig = crypto.sign(priv_key, cert_enc, 'sha256')
 try:
     res = crypto.verify(x509, sig, cert_enc, 'sha256')
+    print("Sign verificated")
+    print(sig)
 except:
     print("ATTENTION: Bad signature")
