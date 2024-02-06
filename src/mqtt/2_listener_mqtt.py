@@ -1,7 +1,4 @@
-# Copyright 2023 IOTA Stiftung
-# SPDX-License-Identifier: Apache-2.0
-
-# This example shows how to listen to MQTT events of a node.
+# [GG] based on simple_transaction.py from iota-sdk
 
 from codecs import utf_16_decode
 import json

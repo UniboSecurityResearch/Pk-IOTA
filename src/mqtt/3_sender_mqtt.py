@@ -1,5 +1,6 @@
-# [GG] copied from simple_transaction.py from iota-sdk
+# [GG] based on simple_transaction.py from iota-sdk
 import os
+import sys
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -7,14 +8,19 @@ from cryptography.hazmat.primitives import serialization
 
 import base64
 
-
 from dotenv import load_dotenv
 
 from iota_sdk import SendParams, Wallet
 
 load_dotenv()
 
-# This example sends a transaction.
+# Check parameters
+if len(sys.argv) > 1:
+    # Read path of the certificate received as parameter
+    cert_path = sys.argv[1]
+else:
+    print("[ERROR] Please insert the certificate path --> python3 3_sender_mqtt.py /path/to/certificate.txt")
+    exit()
 
 wallet = Wallet(os.environ['WALLET_DB_PATH'])
 
@@ -33,9 +39,10 @@ outputs = [{
     "amount": "42600",
 }]
 
+# Read the certificate
+
 text = ""
-file_path = "./cert.txt"
-with open(file_path, 'r') as file:
+with open(cert_path, 'r') as file:
     for line in file:
     	text += line
 #print(text)
