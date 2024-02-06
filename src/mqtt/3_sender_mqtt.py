@@ -59,10 +59,6 @@ pem = priv_key.private_bytes(
 
 #Sign
 sig = priv_key.sign(enc_text,padding.PSS(mgf=padding.MGF1(hashes.SHA256()),salt_length=padding.PSS.MAX_LENGTH),hashes.SHA256())
-print(sig.hex())
-print()
-print()
-
 
 
 

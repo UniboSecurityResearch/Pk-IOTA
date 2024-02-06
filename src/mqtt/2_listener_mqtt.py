@@ -39,19 +39,18 @@ def callback(event):
     #Decode of the hex certificate
     cert_utf = codecs.decode(cert_hex, "hex")
     #Separating signature and certificate; signature will be 1024 hex characters (sha-256)
-    sig=cert_utf[-1024:]
-    cert_fin = cert_utf[:-1024]
+    #decoding also from hex
+    sig=bytes(codecs.decode(cert_hex[-1024:], "hex"))
+    cert_fin = codecs.decode(cert_hex[:-1024], "hex")
     # pylint: disable=global-statement
 
     #Verification of the signature
     err_enc = b"questo testo dara errore nella verifica"
     # DA CAMBIARE: caricamento diretto della public key
-    with open("jwtRS256.key", "rb") as key_file:
-        priv_key = serialization.load_pem_private_key(
+    with open("jwtRS256.key.pub", "rb") as key_file:
+        public_key = serialization.load_pem_public_key(
             key_file.read(),
-            password=None,
         )
-    public_key = priv_key.public_key()
     try:
         public_key.verify(
             sig,
@@ -62,6 +61,7 @@ def callback(event):
             ),
             hashes.SHA256()
         )
+        print("Valid signature")
     except:
         print("[ERROR]: Invalid signature!")
     
