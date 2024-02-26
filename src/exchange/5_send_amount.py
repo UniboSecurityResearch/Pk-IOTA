@@ -4,6 +4,7 @@
 # This example sends tokens to an address.
 
 import os
+import time
 
 from dotenv import load_dotenv
 
@@ -27,11 +28,14 @@ wallet.set_stronghold_password(os.environ["STRONGHOLD_PASSWORD"])
 # have a storage deposit return, expiration or are nft/alias/foundry outputs.
 balance = account.sync(SyncOptions(sync_only_most_basic_outputs=True))
 print('Balance', balance)
-
+tic = time.perf_counter()
 transaction = account.send(
-    1000000,
+    100000,
     "rms1qpszqzadsym6wpppd6z037dvlejmjuke7s24hm95s9fg9vpua7vluaw60xu",
 )
-print(transaction)
 print(
     f'Check your block on: {os.environ["EXPLORER_URL"]}/block/{transaction.blockId}')
+toc = time.perf_counter()
+print('-----------------------------')
+print(f'Time for the transaction: {toc-tic:0.8f} seconds')
+print('-----------------------------')

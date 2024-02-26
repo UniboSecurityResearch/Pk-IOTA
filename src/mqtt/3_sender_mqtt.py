@@ -1,6 +1,7 @@
 # [GG] based on simple_transaction.py from iota-sdk
 import os
 import sys
+import time
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -73,7 +74,11 @@ sig = priv_key.sign(enc_text,padding.PSS(mgf=padding.MGF1(hashes.SHA256()),salt_
 tag = '0x'+'certificato'.encode('utf-8').hex()
 data = '0x'+enc_text.hex()+sig.hex()
 # # The last 1024 characters are the sign
-
+tic = time.perf_counter()
 transaction = account.send(100000,"rms1qqvnuxck92uwvf2hjpr0m9m0rj565efvchcy0xj9u5w8cwprqealva8g48e",options={"taggedDataPayload": {"type": 5, "tag": tag, "data": data}})
-print(transaction)
+#print(transaction)
 print(f'Check your block on: {os.environ["EXPLORER_URL"]}/block/{transaction.blockId}')
+toc = time.perf_counter()
+print('-----------------------------')
+print(f'Time for the transaction: {toc-tic:0.8f} seconds')
+print('-----------------------------')
