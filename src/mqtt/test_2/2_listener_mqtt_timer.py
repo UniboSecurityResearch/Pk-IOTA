@@ -57,7 +57,6 @@ def callback(event):
 	header_splitted = text_splitted[1].split('pubKeyHash')
 	#Trimming the string to obtain only the clean hash of the public key of the sender
 	pkh_received = header_splitted[2][7:].split('}')[0][:-2]
-	print(pkh_received)
 	
 	#Checking if the sender is admin
 	if pkh_received == pkh_admin:
