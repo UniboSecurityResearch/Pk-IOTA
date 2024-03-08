@@ -1,5 +1,5 @@
 #! /bin/bash
-for i in {1..1000}
+for i in {400..1100}
 do
     echo "$i"
     sleep 2
