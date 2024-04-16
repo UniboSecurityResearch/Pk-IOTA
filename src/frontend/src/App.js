@@ -8,6 +8,7 @@ import AddCert from "./components/AddCert";
 
 
 function App() {
+  
   const [message, setMessage] = useState("");
   const [backend, setBackend] = useState("");
   //const [players, setPlayers] = useState([]);
@@ -15,9 +16,13 @@ function App() {
 
   useEffect(() => {
     async function fetchManager() {
-      const backend = await scbackend.methods.backend().call();
+      const accounts = await web3.eth.getAccounts();
+      console.log("aacount:" + scbackend.options.address)
+      const backend = await scbackend.methods.getBackend().call({
+        from: accounts[0]
+    });
       //const players = await scbackend.methods.getPlayers().call();
-      const balance = await web3.eth.getBalance(scbackend.options.address);
+      const balance = await web3.eth.getBalance(accounts[0]);
       setBackend(backend);
       //setPlayers(players);
       setBalance(balance);

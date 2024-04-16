@@ -5,7 +5,6 @@ import scbackend from "../scbackend";
 function AddCert({ setMessage }) {
   const [expireDate, setExpireDate] = useState(0);
   const [certificate, setCertificate] = useState("");
-  const [payment, setPayment] = useState(0);
   const onSubmit = async (event) => {
     event.preventDefault();
 
@@ -16,7 +15,7 @@ function AddCert({ setMessage }) {
 
       setMessage("Waiting on transaction success...");
 
-      await scbackend.methods.addCertificate(certificate,expireDate,payment).send({
+      await scbackend.methods.addCertificate(certificate,expireDate).send({
         from: accounts[0],
         gas: '1000000'
     });
@@ -29,7 +28,6 @@ function AddCert({ setMessage }) {
       setMessage("Certificate sent");
       setCertificate("");
       setExpireDate(0);
-      setPayment(0);
     } catch (err) {
       console.log(err)
     }
@@ -50,12 +48,6 @@ function AddCert({ setMessage }) {
           id="certificate-value"
           value={certificate}
           onChange={(event) => setCertificate(event.target.value)}
-        /><br></br>
-        <label htmlFor="enter-value">Insert the payment:</label>
-        <input
-          id="payment-value"
-          value={payment}
-          onChange={(event) => setPayment(event.target.value)}
         /><br></br><br></br>
       </div>
       <br></br>

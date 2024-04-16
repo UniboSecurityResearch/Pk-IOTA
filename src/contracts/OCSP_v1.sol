@@ -27,6 +27,11 @@ contract sc_backend {
         //Set dell'address chiamante
         backend = msg.sender;
     }
+
+    function getBackend() public view returns (address) {
+        return backend;
+    }
+
     //TODO: aggiungere restricted
     function addCertificate(string certificate, uint256 expireDate) public {
         bool confirm = true;
@@ -41,7 +46,7 @@ contract sc_backend {
     }
     
     function createStruct(string certificate, uint256 expireDate) public {
-        var cert = certificates[certificateIDincr];
+        Certificate cert = certificates[certificateIDincr];
         cert.certificate = certificate;
         cert.expireDate = expireDate;
         certificateIDs.push(certificateIDincr) -1;
@@ -63,6 +68,4 @@ contract sc_backend {
         require(msg.sender == backend);
         _;
     }
-
-    //TODO: implement the check on the expire date when retrieving certificates (OCSP)
 }
