@@ -11,43 +11,39 @@ function render(text) {
   </div>);
 }
 
-function GetAllBookings({ setMessage }) {
-  const onGetAllBookingsHandler = async () => {
+function GetAllCerts({ setMessage }) {
+  const onGetAllCertsHandler = async () => {
     const accounts = await web3.eth.getAccounts();
-    var bookingsString = "";
+    var certString = "";
 
     setMessage("Waiting on transaction success...");
 
-    const bookings = await scbackend.methods.getBookingsAll().call({
+    const certificates = await scbackend.methods.getAllCertificates().call({
         from: accounts[0]
     });
 
     var i = 0;
 
-    for (i = 0; i < bookings.length; i++){
-      const booking = await scbackend.methods.getBookingByAdd(bookings[i]).call({
+    for (i = 0; i < certificates.length; i++){
+      const certificate = await scbackend.methods.getCertificateByID(certificates[i]).call({
         from: accounts[0]
     });
 
     
-    bookingsString+="Booking data: Address: "+bookings[i]+" \
-    start Date: "+booking[0]+"   \
-    end Date: "+booking[1]+" \
-    city: "+booking[2]+" \
-    payment: "+booking[3] + "\n";
+    certString+="Certificate data: ID: "+certificates[i]+" \
+    certificate: "+certificate[0]+"   \
+    expire Date: "+certificate[1]+ "\n";
    }
-
-    
-   setMessage(render(bookingsString));
+   setMessage(render(certString));
 
   };
 
   return (
     <div>
-      <h4>Ready to extract everything?</h4>
-      <button class="button" onClick={onGetAllBookingsHandler}>Get All</button>
+      <h4>Extract all the certificates</h4>
+      <button class="button" onClick={onGetAllCertsHandler}>Get All</button>
     </div>
   );
 }
 
-export default GetAllBookings;
+export default GetAllCerts;

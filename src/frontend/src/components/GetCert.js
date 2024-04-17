@@ -2,36 +2,34 @@ import React, { useState } from "react";
 import web3 from "../web3";
 import scbackend from "../scbackend";
 
-function GetBookingByAdd({ setMessage }) {
-  const [add, setAdd] = useState("");
-  const onGetBookingByAddHandler = async () => {
+function GetCert({ setMessage }) {
+  const [id, setId] = useState(0);
+  const onGetCertHandler = async () => {
     const accounts = await web3.eth.getAccounts();
 
     setMessage("Waiting on transaction success...");
 
-    const booking = await scbackend.methods.getBookingByAdd(add).call({
+    const certificate = await scbackend.methods.getCertificateByID(id).call({
         from: accounts[0]
     });
 
-    setMessage("Booking data: Address: "+add+" \
-    start Date: "+booking[0]+"   \
-    end Date: "+booking[1]+" \
-    city: "+booking[2]+" \
-    payment: "+booking[3]);
+    setMessage("Cert data: ID: "+id+" \
+    Certificate: "+certificate[0]+"   \
+    expire Date: "+certificate[1]);
   };
 
   return (
     <div>
-      <h4>Ready to check if your booking is really inside the blockchain?</h4>
-      <label htmlFor="enter-value">Insert your Ethereum Address:</label>
+      <h4>Retrieve certificate from blockchain</h4>
+      <label htmlFor="enter-value">Insert the ID of the certificate:</label>
         <input
-          id="add-value"
-          value={add}
-          onChange={(event) => setAdd(event.target.value)}
+          id="id-value"
+          value={id}
+          onChange={(event) => setId(event.target.value)}
         /><br></br>
-      <button class="button" onClick={onGetBookingByAddHandler}>Get Booking data</button>
+      <button class="button" onClick={onGetCertHandler}>Get Certificate data</button>
     </div>
   );
 }
 
-export default GetBookingByAdd;
+export default GetCert;

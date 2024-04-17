@@ -11,7 +11,6 @@ function AddCert({ setMessage }) {
     try {
 
       const accounts = await web3.eth.getAccounts();
-      console.log(accounts);
 
       setMessage("Waiting on transaction success...");
 
