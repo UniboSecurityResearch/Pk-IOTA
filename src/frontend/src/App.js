@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import web3 from "./web3";
+import _, { map } from 'underscore';
 import scbackend from "./scbackend";
 import AddCert from "./components/AddCert";
 import GetCert from "./components/GetCert";
@@ -11,15 +12,16 @@ var loaded = false;
 // Subscriber method
 const subscribeLogEvent = (contract, eventName) => {
   console.log(contract._jsonInterface)
-  const eventJsonInterface = web3.utils._.find(
+  const eventJsonInterface = _.find(
     contract._jsonInterface,
-    o => o.name === eventName && o.type === 'event'
+    o => o.name === eventName && o.type === 'event',
   )
   const subscription = web3.eth.subscribe('logs', {
     address: contract.options.address,
     topics: [eventJsonInterface.signature]
   }, (error, result) => {
     if (!error) {
+      console.log("PORCODIO")
       const eventObj = web3.eth.abi.decodeLog(
         eventJsonInterface.inputs,
         result.data,
@@ -69,7 +71,7 @@ function App() {
   {
     done = true;
     subscribeLogEvent(scbackend,"sendCertificate");
-    
+    var lol = [1,2];
   }
   
 
