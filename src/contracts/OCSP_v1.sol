@@ -51,9 +51,21 @@ contract sc_backend {
         cert.expireDate = expireDate;
         certificateIDs.push(certificateIDincr) -1;
     }
-    
+    //get all VALID certificates i.e. not expired
     function getAllCertificates() public view returns (uint[]) {
-        return certificateIDs;
+        uint[] memory certificateIDs_valid = new uint[](certificateIDs.length+1);
+        uint j = 0;
+        for(uint256 i = 0; i <= certificateIDs.length; i++){
+            if(certificates[i].expireDate > block.timestamp){
+                certificateIDs_valid[j] = i;
+                j++;
+            }
+        }
+        return certificateIDs_valid;
+    }
+
+    function time() public view returns (uint){
+        return block.timestamp;
     }
     
     function getCertificateByID(uint id) public view returns (string,uint256) {

@@ -27,12 +27,15 @@ function GetAllCerts({ setMessage }) {
     for (i = 0; i < certificates.length; i++){
       const certificate = await scbackend.methods.getCertificateByID(certificates[i]).call({
         from: accounts[0]
-    });
-
-    
+      });
     certString+="Certificate data: ID: "+certificates[i]+" \
     certificate: "+certificate[0]+"   \
     expire Date: "+certificate[1]+ "\n";
+    //if the next certificate IDs is 0, from the contract code v1, it means that there are no more valid certificates
+    if (i < (certificates.length-1) && certificates(i+1) == 0)
+    {
+      break;
+    }
    }
    setMessage(render(certString));
 
