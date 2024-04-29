@@ -10,7 +10,7 @@ import GetAllCerts from "./components/GetAllCerts";
 var done = false;
 var loaded = false;
 // Subscriber method
-const subscribeLogEvent = (contract, eventName) => {
+/*const subscribeLogEvent = (contract, eventName) => {
   console.log(contract._jsonInterface)
   const eventJsonInterface = _.find(
     contract._jsonInterface,
@@ -21,7 +21,7 @@ const subscribeLogEvent = (contract, eventName) => {
     topics: [eventJsonInterface.signature]
   }, (error, result) => {
     if (!error) {
-      console.log("PORCODIO")
+      console.log("CI SIAMO")
       const eventObj = web3.eth.abi.decodeLog(
         eventJsonInterface.inputs,
         result.data,
@@ -38,11 +38,24 @@ const subscribeLogEvent = (contract, eventName) => {
     }
     else{
       var eventString = "An event has not been fired :(" + result
-                      
+      console.log("error subscribe");
       document.getElementById("whereToPrint").innerHTML += "<p>"+eventString+"</p>";
     }
   })
-};
+};*/
+
+
+
+async function listenForEvent(){
+	console.log("Waiting for event");
+	var subscription = web3.eth.subscribe('logs', {
+		address: scbackend.options.address,
+	}, function(error, result){
+		if (!error)
+			console.log(result);
+    else console.log(error);
+	});
+}
 
 
 function App() {
@@ -70,8 +83,9 @@ function App() {
   if(!done && loaded)
   {
     done = true;
-    subscribeLogEvent(scbackend,"sendCertificate");
-    var lol = [1,2];
+    console.log("okletsgo");
+    //subscribeLogEvent(scbackend,"sendCertificate");
+    listenForEvent();
   }
   
 

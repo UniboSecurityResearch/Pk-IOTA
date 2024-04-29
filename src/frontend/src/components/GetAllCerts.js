@@ -32,7 +32,7 @@ function GetAllCerts({ setMessage }) {
     certificate: "+certificate[0]+"   \
     expire Date: "+certificate[1]+ "\n";
     //if the next certificate IDs is 0, from the contract code v1, it means that there are no more valid certificates
-    if (i < (certificates.length-1) && certificates(i+1) == 0)
+    if (i < (certificates.length-1) && certificates[i+1] == 0)
     {
       break;
     }
