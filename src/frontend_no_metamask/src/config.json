@@ -1,0 +1,6 @@
+{
+  "port": 8080,
+  "bodyLimit": "1kb",
+  "iotaNetwork": "wss://rinkeby.infura.io/ws/v3/f14339b08c71434f919dda4ef13511fb"
+}
+
