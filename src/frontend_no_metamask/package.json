@@ -11,8 +11,8 @@
     "react-scripts": "5.0.1",
     "underscore": "^1.13.6",
     "web-vitals": "^3.5.2",
-    "web3": "^4.8.0",
-    "web3-utils": "^4.2.3"
+    "web3": "^1.10.4",
+    "web3-utils": "^1.10.4"
   },
   "scripts": {
     "start": "react-scripts start",
