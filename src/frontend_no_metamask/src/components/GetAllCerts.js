@@ -44,7 +44,7 @@ function GetAllCerts({ setMessage }) {
   return (
     <div>
       <h4>Extract all the certificates</h4>
-      <button class="button" onClick={onGetAllCertsHandler}>Get All</button>
+      <button className="button" onClick={onGetAllCertsHandler}>Get All</button>
     </div>
   );
 }

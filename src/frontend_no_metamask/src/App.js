@@ -11,7 +11,6 @@ var done = false;
 var loaded = false;
 // Subscriber method
 const subscribeLogEvent = (contract, eventName) => {
-  console.log(contract._jsonInterface)
   const eventJsonInterface = _.find(
     contract._jsonInterface,
     o => o.name === eventName && o.type === 'event',
@@ -79,8 +78,8 @@ function App() {
     {
       done = true;
       console.log("okletsgo");
-      //subscribeLogEvent(scbackend,"sendCertificate");
-      listenForEvent();
+      subscribeLogEvent(scbackend,"sendCertificate");
+      //listenForEvent();
     }
     fetchManager();
     

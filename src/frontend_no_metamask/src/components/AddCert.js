@@ -11,12 +11,11 @@ function AddCert({ setMessage }) {
     try {
 
       const accounts = await web3.eth.getAccounts();
-
       setMessage("Waiting on transaction success...");
 
       await scbackend.methods.addCertificate(certificate,expireDate).send({
         from: accounts[0],
-        gas: '1000000'
+        gas: '1000000',
     });
 /* [OLD CODE]
       await scbackend.methods.book().send({
@@ -50,7 +49,7 @@ function AddCert({ setMessage }) {
         /><br></br><br></br>
       </div>
       <br></br>
-      <button class="button" type="submit">Enter</button>
+      <button className="button" type="submit">Enter</button>
     </form>
   );
 }

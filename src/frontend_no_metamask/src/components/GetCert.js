@@ -27,7 +27,7 @@ function GetCert({ setMessage }) {
           value={id}
           onChange={(event) => setId(event.target.value)}
         /><br></br>
-      <button class="button" onClick={onGetCertHandler}>Get Certificate data</button>
+      <button className="button" onClick={onGetCertHandler}>Get Certificate data</button>
     </div>
   );
 }
