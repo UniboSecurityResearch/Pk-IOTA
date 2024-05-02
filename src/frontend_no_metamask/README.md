@@ -1,6 +1,7 @@
 # Frontend application
 
-Example of frontend application which connects to the smart contract to use the OCSP features and manage certificates.
+Example of frontend application which connects to the smart contract to use the OCSP features and manage certificates.<br>
+**This work with nodejs version 22.0.0** !! Use n ( _npm install -g n_ ) to select the rigth version ( _sudo n 22.0.0_ )
 
 ## Instructions
 
