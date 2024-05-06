@@ -9,12 +9,10 @@ function AddCert({ setMessage }) {
     event.preventDefault();
 
     try {
-
-      const accounts = await web3.eth.getAccounts();
       setMessage("Waiting on transaction success...");
 
       await scbackend.methods.addCertificate(certificate,expireDate).send({
-        from: accounts[0],
+        from: web3.eth.defaultAccount,
         gas: '1000000',
     });
 /* [OLD CODE]

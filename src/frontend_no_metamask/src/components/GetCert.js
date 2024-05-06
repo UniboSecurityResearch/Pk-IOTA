@@ -5,12 +5,11 @@ import scbackend from "../scbackend";
 function GetCert({ setMessage }) {
   const [id, setId] = useState(0);
   const onGetCertHandler = async () => {
-    const accounts = await web3.eth.getAccounts();
 
     setMessage("Waiting on transaction success...");
 
     const certificate = await scbackend.methods.getCertificateByID(id).call({
-        from: accounts[0]
+        from: web3.eth.defaultAccount
     });
 
     setMessage("Cert data: ID: "+id+" \

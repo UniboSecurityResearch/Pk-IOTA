@@ -6,6 +6,7 @@ import scbackend from "./scbackend";
 import AddCert from "./components/AddCert";
 import GetCert from "./components/GetCert";
 import GetAllCerts from "./components/GetAllCerts";
+import WalletForm from "./components/WalletForm";
 
 var done = false;
 var loaded = false;
@@ -59,27 +60,29 @@ async function listenForEvent(){
 
 function App() {
   
+  var [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [backend, setBackend] = useState("");
   const [backendBalance, setBalance] = useState("");
 
-  useEffect(() => {
-    async function fetchManager() {
-      const accounts = await web3.eth.getAccounts();
-      const backend = await scbackend.methods.getBackend().call({
-        from: accounts[0]
-    });
-      const balance = await web3.eth.getBalance(accounts[0]);
-      setBackend(backend);
-      setBalance(balance);
-      loaded = true;
-    }
-    if(!done && loaded)
+  const agetBalance = async() => {
+    const balance = await web3.eth.getBalance(web3.eth.defaultAccount);
+    setBalance(balance);
+  }
+
+  if(!done && loaded)
     {
       done = true;
       console.log("okletsgo");
+      agetBalance();
       subscribeLogEvent(scbackend,"sendCertificate");
       //listenForEvent();
+    }
+
+  useEffect(() => {
+    async function fetchManager() {
+      const backend = await scbackend.methods.getBackend().call();
+      setBackend(backend);
     }
     fetchManager();
     
@@ -95,6 +98,9 @@ function App() {
       <p>
                 {web3.utils.fromWei(backendBalance, "ether")} SMR!
       </p>
+      <hr />
+      <WalletForm setMessage={setMessage} setLoaded={setLoaded}/>
+      <hr />
       <hr />
       <pre id="whereToPrint"></pre>
       <hr />

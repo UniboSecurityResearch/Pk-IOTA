@@ -13,20 +13,19 @@ function render(text) {
 
 function GetAllCerts({ setMessage }) {
   const onGetAllCertsHandler = async () => {
-    const accounts = await web3.eth.getAccounts();
     var certString = "";
 
     setMessage("Waiting on transaction success...");
 
     const certificates = await scbackend.methods.getAllCertificates().call({
-        from: accounts[0]
+        from: web3.eth.defaultAccount
     });
 
     var i = 0;
 
     for (i = 0; i < certificates.length; i++){
       const certificate = await scbackend.methods.getCertificateByID(certificates[i]).call({
-        from: accounts[0]
+        from: web3.eth.defaultAccount
       });
     certString+="Certificate data: ID: "+certificates[i]+" \
     certificate: "+certificate[0]+"   \
