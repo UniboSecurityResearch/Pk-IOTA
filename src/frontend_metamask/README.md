@@ -1,7 +1,8 @@
 # Frontend application
 
-Example of frontend application which connects to the smart contract to use the OCSP features and manage certificates.<br>
-**This work with nodejs version 10.24.1** !! Use n ( _npm install -g n_ ) to select the rigth version ( _n 10.24.1_ )
+Example of frontend application which connects to the smart contract forr the certificate management.<br>
+**This work with nodejs version 10.24.1** !! Use n ( _npm install -g n_ ) to select the rigth version ( _n 10.24.1_ ) <br><br>
+**This version DOES NOT works with event management (so, no notification of adding or revoking certificates works), as Metamask cannot manage those functions - please use the ../frontend_complete directory to have a complete version.**
 
 ## Instructions
 
