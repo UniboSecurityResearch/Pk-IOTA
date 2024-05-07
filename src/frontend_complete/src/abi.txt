@@ -36,6 +36,34 @@
 		"type": "function"
 	},
 	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "certificateString",
+				"type": "string"
+			}
+		],
+		"name": "revokeCertificate",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "id",
+				"type": "uint256"
+			}
+		],
+		"name": "revokeCertificateByID",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -56,6 +84,28 @@
 			}
 		],
 		"name": "sendCertificate",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "certificate",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"name": "expireDate",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "id",
+				"type": "uint256"
+			}
+		],
+		"name": "revokedCertificate",
 		"type": "event"
 	},
 	{
@@ -136,6 +186,10 @@
 			{
 				"name": "",
 				"type": "uint256"
+			},
+			{
+				"name": "",
+				"type": "bool"
 			}
 		],
 		"payable": false,

@@ -33,12 +33,11 @@ function WalletForm({ setMessage,  setLoaded}) {
       const account = web3.eth.accounts.privateKeyToAccount("0x590182b315de1ca09ace079090d499e6e3b7dbbef9eb0aaa604916a6bec77a20");*/
       web3.eth.defaultAccount = wallet[0].address;
       console.log(wallet);
-      setMessage("Wallet caricato, indirizzo: " +  web3.eth.defaultAccount);
+      setMessage("Wallet successfully loaded, address: " +  web3.eth.defaultAccount);
       const bal = await web3.eth.getBalance(wallet[0].address);
-      console.log("BALANCE WALLET PERSONALE: " + web3.utils.fromWei(bal, "ether"));
+      console.log("Balance of the personal wallet: " + web3.utils.fromWei(bal, "ether") + "SMR");
       //await window.ethereum.enable();
       setLoaded(true);
-
       setPWD2("");
     } catch (err) {
       console.log(err)
@@ -48,10 +47,10 @@ function WalletForm({ setMessage,  setLoaded}) {
   return (
   <div>
     <form onSubmit={onCreate}>
-      <h4>This is the form to save and load the wallet</h4>
-      <p>You have to create the wallet the first time</p>
+      <h4>This is the form to save and load the wallet, to be done as first step</h4>
+      <p>You have to create the wallet the first time:</p>
       <div>
-        <label htmlFor="enter-value">Insert the password of the wallet:</label>
+        <label htmlFor="enter-value">Insert the password of the wallet you want to create:</label>
         <input
           pwd="pass-value"
           value={pwd}
@@ -59,10 +58,10 @@ function WalletForm({ setMessage,  setLoaded}) {
         /><br></br>
       </div>
       <button class="button" type="submit">Create and Save Wallet</button>
-    </form>
+    </form><br></br>
     <form onSubmit={onLoad}>
       <div>
-        <label htmlFor="enter-value">Insert the password of the wallet:</label>
+        <label htmlFor="enter-value">Insert the password of the wallet to be loaded (previously created):</label>
         <input
           pwd2="pass2-value"
           value={pwd2}
@@ -70,10 +69,8 @@ function WalletForm({ setMessage,  setLoaded}) {
         />
       </div>
       <button class="button" type="submit">Load wallet</button>
-    </form>
-  </div>
-    
-    
+    </form><br></br>
+  </div> 
   );
 }
 

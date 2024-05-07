@@ -27,14 +27,22 @@ function GetAllCerts({ setMessage }) {
       const certificate = await scbackend.methods.getCertificateByID(certificates[i]).call({
         from: web3.eth.defaultAccount
       });
-    certString+="Certificate data: ID: "+certificates[i]+" \
-    certificate: "+certificate[0]+"   \
-    expire Date: "+certificate[1]+ "\n";
-    //if the next certificate IDs is 0, from the contract code v1, it means that there are no more valid certificates
-    if (i < (certificates.length-1) && certificates[i+1] == 0)
-    {
-      break;
-    }
+      if(certificates[i] != 0)
+        {
+          certString+="Certificate data: ID: "+certificates[i]+" \
+          certificate: "+certificate[0]+"   \n \
+          expire Date: "+certificate[1]+"   \n \
+          revoked:"+ certificate[2] + "\n \n";
+        }
+        else if(i==0)
+          {
+            certString = "No valid certificates";
+          }
+      //if the next certificate IDs is 0, from the contract code v1, it means that there are no more valid certificates
+      if (i < (certificates.length-1) && certificates[i+1] == 0)
+      {
+        break;
+      }
    }
    setMessage(render(certString));
 
@@ -42,7 +50,7 @@ function GetAllCerts({ setMessage }) {
 
   return (
     <div>
-      <h4>Extract all the certificates</h4>
+      <h4>Extract all the VALID certificates from the IOTA blockchain</h4>
       <button className="button" onClick={onGetAllCertsHandler}>Get All</button>
     </div>
   );

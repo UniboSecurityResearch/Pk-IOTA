@@ -1,0 +1,22 @@
+.button {
+   background-color: #327634; /* Green */
+   border: 2px solid rgb(12, 55, 12);
+   color: white;
+   padding: 15px 32px;
+   text-align: center;
+   text-decoration: none;
+   display: inline-block;
+   font-size: 18px;
+   border-radius: 5%;
+ }
+
+ body{
+  font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+ }
+ p{
+  margin-bottom: 10px;
+ }
+ .revoke{
+  background-color: #742f2f; /* Red */
+  border: 2px solid rgb(55, 12, 12);
+ }

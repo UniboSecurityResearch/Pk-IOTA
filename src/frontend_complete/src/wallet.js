@@ -1,17 +1,14 @@
 import web3 from "./web3";
 
+//Lbrary with some functons to manage the wallets
+
 const createAccount = (password) => {
   var account = web3.eth.accounts.create();
   console.log(account.address);
   console.log(account.privateKey);
-  //prova = web3.eth.accounts.wallet.create(1);
-  //console.log(prova);
   var acc = web3.eth.accounts.wallet.add(account);
   console.log(acc);
   var result = web3.eth.accounts.wallet.save(password);
-  //var walletText = JSON.stringify(web3.eth.accounts.wallet);
-  //console.log(walletText);
-  //fs.writeFile("myWallet.json", walletText);
   return result;
 }
 

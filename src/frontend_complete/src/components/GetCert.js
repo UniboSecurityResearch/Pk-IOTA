@@ -14,12 +14,13 @@ function GetCert({ setMessage }) {
 
     setMessage("Cert data: ID: "+id+" \
     Certificate: "+certificate[0]+"   \
-    expire Date: "+certificate[1]);
+    expire Date: "+certificate[1]+"   \
+    revoked: "+certificate[2]);
   };
 
   return (
     <div>
-      <h4>Retrieve certificate from blockchain</h4>
+      <h4>Retrieve certificate from IOTA blockchain</h4>
       <label htmlFor="enter-value">Insert the ID of the certificate:</label>
         <input
           id="id-value"
