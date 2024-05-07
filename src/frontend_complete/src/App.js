@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import web3 from "./web3";
-import _, { map } from 'underscore';
+import _ from 'underscore';
 import scbackend from "./scbackend";
 import AddCert from "./components/AddCert";
 import GetCert from "./components/GetCert";
