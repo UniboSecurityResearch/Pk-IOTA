@@ -1,6 +1,6 @@
 {
   "port": 8080,
   "bodyLimit": "1kb",
-  "iotaNetwork": "wss://ws.json-rpc.evm.testnet.shimmer.network"
+  "iotaNetwork": "wss://ws.json-rpc.evm.testnet.iotaledger.net"
 }
 

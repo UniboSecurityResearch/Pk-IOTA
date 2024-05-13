@@ -1,4 +1,3 @@
-//TEST TIME
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import web3 from "./web3";
@@ -10,7 +9,6 @@ import GetAllCerts from "./components/GetAllCerts";
 import WalletForm from "./components/WalletForm";
 import RevokeCert from "./components/RevokeCert";
 import RevokeCertByID from "./components/RevokeCertByID";
-import Test from "./components/Test";
 
 var done = false;
 // Subscriber method
@@ -31,11 +29,11 @@ const subscribeNewCert = (contract, eventName) => {
         result.topics.slice(1)
       )
       if(eventObj[0]==0){
-        var eventString = "A certificate is sent, but with invalid parameters:  " + eventObj[1];
+        var eventString = "A certifcate is sent, but with invalid parameters:  " + eventObj[1];
         document.getElementById("whereToPrint").innerHTML += "<p>"+eventString+"</p>";
       }
       else{
-        var eventString = "<b>NEW CERTIFICATE</b>:  " + eventObj[0] + " <br> with expire date: "+ eventObj[1];
+        var eventString = "<b>NEW CERTIFICATE</b>:  " + eventObj[1] + " <br> with expire date: "+ eventObj[0];
         document.getElementById("whereToPrint").innerHTML += "<p>"+eventString+"</p>";
       }
     }
@@ -98,9 +96,8 @@ function App() {
       done = true;
       console.log("subscription...");
       agetBalance();
-      //subscribeNewCert(scbackend,"sendCertificate");
-      subscribeRevoke(scbackend,"revokedCertificate");
-      
+      subscribeNewCert(scbackend,"sendCertificate");
+      subscribeRevoke(scbackend,"revokedCertificate")
     }
 
   useEffect(() => {
@@ -117,7 +114,7 @@ function App() {
       <h2>Frontend to interact with the Smart Contract</h2>
       <p>This contract is deployed by <b>{backend}</b></p>
       <p>
-        You have {web3.utils.fromWei(backendBalance, "ether")} IOTA!
+        You have {web3.utils.fromWei(backendBalance, "ether")} SMR!
       </p>
       <hr />
       <WalletForm setMessage={setMessage} setLoaded={setLoaded}/>
@@ -145,8 +142,8 @@ function App() {
       <GetAllCerts setMessage={setMessage} />
       <hr />
       <br></br>
+      
       <br></br>
-      <Test setMessage={setMessage} />
       <hr />
       <h4>@beawareoftheg GG</h4>
     </div>

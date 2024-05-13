@@ -57,7 +57,7 @@ function WalletForm({ setMessage,  setLoaded}) {
           onChange={(event) => setPWD(event.target.value)}
         /><br></br>
       </div>
-      <button class="button" type="submit">Create and Save Wallet</button>
+      <button className="button" type="submit">Create and Save Wallet</button>
     </form><br></br>
     <form onSubmit={onLoad}>
       <div>
@@ -68,7 +68,7 @@ function WalletForm({ setMessage,  setLoaded}) {
           onChange={(event) => setPWD2(event.target.value)}
         />
       </div>
-      <button class="button" type="submit">Load wallet</button>
+      <button className="button" type="submit">Load wallet</button>
     </form><br></br>
   </div> 
   );

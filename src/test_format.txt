@@ -1,0 +1,13 @@
+
+***************** MQTT *********************
+
+SENDER:
+   index - init_time - after_sync - before_send - after_send_complete
+(time for transaction = after_send_complete - before_send)
+
+LISTENER:
+   index - received_time - decoded_time
+
+***************** SMART CONTRACT *********************
+SENDER&LISTENER:
+   index - before_send - after_send_complete - received_time - decoded_time
