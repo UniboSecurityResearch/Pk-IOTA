@@ -98,7 +98,7 @@ function App() {
       done = true;
       console.log("subscription...");
       agetBalance();
-      //subscribeNewCert(scbackend,"sendCertificate");
+      subscribeNewCert(scbackend,"sendCertificate");
       subscribeRevoke(scbackend,"revokedCertificate");
       
     }
