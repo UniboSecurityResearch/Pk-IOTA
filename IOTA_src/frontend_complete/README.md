@@ -9,7 +9,7 @@ Example of frontend application which connects to the smart contract to use the 
 ## Instructions
 
 ### 1. Deployment
-  First of all, **deploy the smart contract** that you can find in the folder ../contracts (you can deploy the contract with the online tool _Remix_, for example).
+  First of all, **deploy the smart contract** that you can find in the folder ../contracts (you can deploy the contract with the online tool _Remix_, for example) for EMV version shangai.
 
 ### 2. Configure the env
   Once the smart contract is deployed, take the address where it is deployed and insert it inside the **.env** file at the property "**REACT_APP_SCBACKEND_ADDRESS**". <br>
