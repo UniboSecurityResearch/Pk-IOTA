@@ -1,8 +1,9 @@
 
-test_listen = open("test_der_listener.txt", "r") 
+test_listen = open("test_der_listener_USA.txt", "r") 
 lines_listen = test_listen.readlines()
-		
-test_sender = open("./sender/test_der_sender.txt", "r")
+tot_times = 0
+num = 0
+test_sender = open("./sender/test_der_sender_USA.txt", "r")
 lines_sender = test_sender.readlines()
 
 for line_l in lines_listen:
@@ -14,7 +15,12 @@ for line_l in lines_listen:
       if line_s_splitted[0] == line_l_splitted[0]:
          #print(line_s_splitted[4])
          arrivo = float(line_l_splitted[2].split('\n')[0])
-         invio = float(line_s_splitted[4].split('\n')[0])
-         print(arrivo-invio)
+         invio_completo = float(line_s_splitted[4].split('\n')[0])
+         invio_iniziato = float(line_s_splitted[3].split('\n')[0])
+         print("Total time:" + str(arrivo-invio_iniziato) + "  Spread time:" + str(arrivo-invio_completo))
+         tot_times += arrivo-invio_iniziato
+         num+=1
          break
+
+print(str(num) + " tests, with mean of total time: " + str (tot_times/num))
     

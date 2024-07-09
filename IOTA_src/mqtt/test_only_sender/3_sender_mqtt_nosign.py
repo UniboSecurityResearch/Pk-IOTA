@@ -30,14 +30,17 @@ for env_var in ['WALLET_DB_PATH', 'STRONGHOLD_PASSWORD', 'EXPLORER_URL']:
 
 wallet = Wallet(os.environ.get('WALLET_DB_PATH'))
 
+
+
 account = wallet.get_account('Alice')
+
 
 wallet.set_stronghold_password(os.environ["STRONGHOLD_PASSWORD"])
 
 # Set sync_only_most_basic_outputs to True if not interested in outputs that are timelocked,
 # have a storage deposit return, expiration or are nft/alias/foundry outputs.
 balance = account.sync(SyncOptions(sync_only_most_basic_outputs=True))
-
+print("Balance is: " + str(balance))
 
 # Read the certificate
 
@@ -56,7 +59,7 @@ data = '0x'+enc_text.hex()
 #data = '0x124549235012'
 
 tic = time.perf_counter()
-transaction = account.send(100000,"rms1qqvnuxck92uwvf2hjpr0m9m0rj565efvchcy0xj9u5w8cwprqealva8g48e",options={"taggedDataPayload": {"type": 5, "tag": tag, "data": data}})
+transaction = account.send(100000,"tst1qqv5avetndkxzgr3jtrswdtz5ze6mag20s0jdqvzk4fwezve8q9vkamkkx0",options={"taggedDataPayload": {"type": 5, "tag": tag, "data": data}})
 toc = time.perf_counter()
 print(f'Check your block on: {os.environ["EXPLORER_URL"]}/block/{transaction.blockId}')
 print('-----------------------------')

@@ -32,7 +32,7 @@ wallet = Wallet(os.environ.get('WALLET_DB_PATH'),
 wallet.store_mnemonic(
     os.environ['MNEMONIC'])
 
-account = wallet.create_account('Alice')
+account = wallet.create_account('Bob-mac')
 
 # Set sync_only_most_basic_outputs to True if not interested in outputs that are timelocked,
 # have a storage deposit return, expiration or are nft/alias/foundry outputs.
