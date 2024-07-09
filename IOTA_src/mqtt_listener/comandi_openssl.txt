@@ -1,0 +1,7 @@
+trasformare in .txt da .der : openssl x509 -in out.der -inform der -out cert.txt --text 
+
+
+trasformare in .pem da . der: openssl x509 -in out.der -inform der -out cert.pem -outform pem
+
+generare chiave pubblica in .pem da privata in .pem: openssl pkey -in jwtRS256.key -pubout > jwtRS256.key.pub
+

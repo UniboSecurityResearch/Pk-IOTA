@@ -1,0 +1,321 @@
+2024/03/08-13:23:34.192920 140704620079040 RocksDB version: 8.1.1
+2024/03/08-13:23:34.193010 140704620079040 Compile date 2023-04-06 16:38:52
+2024/03/08-13:23:34.193014 140704620079040 DB SUMMARY
+2024/03/08-13:23:34.193018 140704620079040 DB Session ID:  9POWBVLZBXM14W1IK4FB
+2024/03/08-13:23:34.194659 140704620079040 CURRENT file:  CURRENT
+2024/03/08-13:23:34.194663 140704620079040 IDENTITY file:  IDENTITY
+2024/03/08-13:23:34.194695 140704620079040 MANIFEST file:  MANIFEST-025944 size: 641 Bytes
+2024/03/08-13:23:34.194697 140704620079040 SST files in ./example-walletdb dir, Total Num: 4, files: 025937.sst 025939.sst 025942.sst 025948.sst 
+2024/03/08-13:23:34.194700 140704620079040 Write Ahead Log file in ./example-walletdb: 025947.log size: 38143074 ; 
+2024/03/08-13:23:34.194738 140704620079040                         Options.error_if_exists: 0
+2024/03/08-13:23:34.194740 140704620079040                       Options.create_if_missing: 1
+2024/03/08-13:23:34.194742 140704620079040                         Options.paranoid_checks: 1
+2024/03/08-13:23:34.194743 140704620079040             Options.flush_verify_memtable_count: 1
+2024/03/08-13:23:34.194744 140704620079040                               Options.track_and_verify_wals_in_manifest: 0
+2024/03/08-13:23:34.194746 140704620079040        Options.verify_sst_unique_id_in_manifest: 1
+2024/03/08-13:23:34.194747 140704620079040                                     Options.env: 0x102ccc988
+2024/03/08-13:23:34.194749 140704620079040                                      Options.fs: PosixFileSystem
+2024/03/08-13:23:34.194750 140704620079040                                Options.info_log: 0x7f897907e528
+2024/03/08-13:23:34.194751 140704620079040                Options.max_file_opening_threads: 16
+2024/03/08-13:23:34.194753 140704620079040                              Options.statistics: 0x0
+2024/03/08-13:23:34.194754 140704620079040                               Options.use_fsync: 0
+2024/03/08-13:23:34.194755 140704620079040                       Options.max_log_file_size: 0
+2024/03/08-13:23:34.194757 140704620079040                  Options.max_manifest_file_size: 1073741824
+2024/03/08-13:23:34.194758 140704620079040                   Options.log_file_time_to_roll: 0
+2024/03/08-13:23:34.194759 140704620079040                       Options.keep_log_file_num: 1000
+2024/03/08-13:23:34.194761 140704620079040                    Options.recycle_log_file_num: 0
+2024/03/08-13:23:34.194762 140704620079040                         Options.allow_fallocate: 1
+2024/03/08-13:23:34.194763 140704620079040                        Options.allow_mmap_reads: 0
+2024/03/08-13:23:34.194765 140704620079040                       Options.allow_mmap_writes: 0
+2024/03/08-13:23:34.194766 140704620079040                        Options.use_direct_reads: 0
+2024/03/08-13:23:34.194767 140704620079040                        Options.use_direct_io_for_flush_and_compaction: 0
+2024/03/08-13:23:34.194768 140704620079040          Options.create_missing_column_families: 1
+2024/03/08-13:23:34.194770 140704620079040                              Options.db_log_dir: 
+2024/03/08-13:23:34.194771 140704620079040                                 Options.wal_dir: 
+2024/03/08-13:23:34.194772 140704620079040                Options.table_cache_numshardbits: 6
+2024/03/08-13:23:34.194774 140704620079040                         Options.WAL_ttl_seconds: 0
+2024/03/08-13:23:34.194775 140704620079040                       Options.WAL_size_limit_MB: 0
+2024/03/08-13:23:34.194776 140704620079040                        Options.max_write_batch_group_size_bytes: 1048576
+2024/03/08-13:23:34.194778 140704620079040             Options.manifest_preallocation_size: 4194304
+2024/03/08-13:23:34.194779 140704620079040                     Options.is_fd_close_on_exec: 1
+2024/03/08-13:23:34.194780 140704620079040                   Options.advise_random_on_open: 1
+2024/03/08-13:23:34.194781 140704620079040                    Options.db_write_buffer_size: 0
+2024/03/08-13:23:34.194783 140704620079040                    Options.write_buffer_manager: 0x60000041c0d0
+2024/03/08-13:23:34.194784 140704620079040         Options.access_hint_on_compaction_start: 1
+2024/03/08-13:23:34.194785 140704620079040           Options.random_access_max_buffer_size: 1048576
+2024/03/08-13:23:34.194787 140704620079040                      Options.use_adaptive_mutex: 0
+2024/03/08-13:23:34.194788 140704620079040                            Options.rate_limiter: 0x0
+2024/03/08-13:23:34.194792 140704620079040     Options.sst_file_manager.rate_bytes_per_sec: 0
+2024/03/08-13:23:34.194793 140704620079040                       Options.wal_recovery_mode: 2
+2024/03/08-13:23:34.194795 140704620079040                  Options.enable_thread_tracking: 0
+2024/03/08-13:23:34.194796 140704620079040                  Options.enable_pipelined_write: 0
+2024/03/08-13:23:34.194797 140704620079040                  Options.unordered_write: 0
+2024/03/08-13:23:34.194798 140704620079040         Options.allow_concurrent_memtable_write: 1
+2024/03/08-13:23:34.194800 140704620079040      Options.enable_write_thread_adaptive_yield: 1
+2024/03/08-13:23:34.194801 140704620079040             Options.write_thread_max_yield_usec: 100
+2024/03/08-13:23:34.194802 140704620079040            Options.write_thread_slow_yield_usec: 3
+2024/03/08-13:23:34.194803 140704620079040                               Options.row_cache: None
+2024/03/08-13:23:34.194805 140704620079040                              Options.wal_filter: None
+2024/03/08-13:23:34.194806 140704620079040             Options.avoid_flush_during_recovery: 0
+2024/03/08-13:23:34.194807 140704620079040             Options.allow_ingest_behind: 0
+2024/03/08-13:23:34.194809 140704620079040             Options.two_write_queues: 0
+2024/03/08-13:23:34.194810 140704620079040             Options.manual_wal_flush: 0
+2024/03/08-13:23:34.194811 140704620079040             Options.wal_compression: 0
+2024/03/08-13:23:34.194812 140704620079040             Options.atomic_flush: 0
+2024/03/08-13:23:34.194814 140704620079040             Options.avoid_unnecessary_blocking_io: 0
+2024/03/08-13:23:34.194815 140704620079040                 Options.persist_stats_to_disk: 0
+2024/03/08-13:23:34.194816 140704620079040                 Options.write_dbid_to_manifest: 0
+2024/03/08-13:23:34.194818 140704620079040                 Options.log_readahead_size: 0
+2024/03/08-13:23:34.194819 140704620079040                 Options.file_checksum_gen_factory: Unknown
+2024/03/08-13:23:34.194822 140704620079040                 Options.best_efforts_recovery: 0
+2024/03/08-13:23:34.194824 140704620079040                Options.max_bgerror_resume_count: 2147483647
+2024/03/08-13:23:34.194825 140704620079040            Options.bgerror_resume_retry_interval: 1000000
+2024/03/08-13:23:34.194826 140704620079040             Options.allow_data_in_errors: 0
+2024/03/08-13:23:34.194828 140704620079040             Options.db_host_id: __hostname__
+2024/03/08-13:23:34.194829 140704620079040             Options.enforce_single_del_contracts: true
+2024/03/08-13:23:34.194832 140704620079040             Options.max_background_jobs: 2
+2024/03/08-13:23:34.194834 140704620079040             Options.max_background_compactions: -1
+2024/03/08-13:23:34.194835 140704620079040             Options.max_subcompactions: 1
+2024/03/08-13:23:34.194836 140704620079040             Options.avoid_flush_during_shutdown: 0
+2024/03/08-13:23:34.194838 140704620079040           Options.writable_file_max_buffer_size: 1048576
+2024/03/08-13:23:34.194839 140704620079040             Options.delayed_write_rate : 16777216
+2024/03/08-13:23:34.194840 140704620079040             Options.max_total_wal_size: 0
+2024/03/08-13:23:34.194842 140704620079040             Options.delete_obsolete_files_period_micros: 21600000000
+2024/03/08-13:23:34.194843 140704620079040                   Options.stats_dump_period_sec: 600
+2024/03/08-13:23:34.194844 140704620079040                 Options.stats_persist_period_sec: 600
+2024/03/08-13:23:34.194846 140704620079040                 Options.stats_history_buffer_size: 1048576
+2024/03/08-13:23:34.194847 140704620079040                          Options.max_open_files: -1
+2024/03/08-13:23:34.194849 140704620079040                          Options.bytes_per_sync: 0
+2024/03/08-13:23:34.194850 140704620079040                      Options.wal_bytes_per_sync: 0
+2024/03/08-13:23:34.194851 140704620079040                   Options.strict_bytes_per_sync: 0
+2024/03/08-13:23:34.194853 140704620079040       Options.compaction_readahead_size: 0
+2024/03/08-13:23:34.194854 140704620079040                  Options.max_background_flushes: -1
+2024/03/08-13:23:34.194855 140704620079040 Compression algorithms supported:
+2024/03/08-13:23:34.194857 140704620079040 	kZSTD supported: 0
+2024/03/08-13:23:34.194858 140704620079040 	kZlibCompression supported: 0
+2024/03/08-13:23:34.194860 140704620079040 	kXpressCompression supported: 0
+2024/03/08-13:23:34.194861 140704620079040 	kSnappyCompression supported: 0
+2024/03/08-13:23:34.194863 140704620079040 	kZSTDNotFinalCompression supported: 0
+2024/03/08-13:23:34.194864 140704620079040 	kLZ4HCCompression supported: 1
+2024/03/08-13:23:34.194865 140704620079040 	kLZ4Compression supported: 1
+2024/03/08-13:23:34.194867 140704620079040 	kBZip2Compression supported: 0
+2024/03/08-13:23:34.194869 140704620079040 Fast CRC32 supported: Not supported on x86
+2024/03/08-13:23:34.194870 140704620079040 DMutex implementation: pthread_mutex_t
+2024/03/08-13:23:34.195082 140704620079040 [db/version_set.cc:5662] Recovering from manifest file: ./example-walletdb/MANIFEST-025944
+2024/03/08-13:23:34.195191 140704620079040 [db/column_family.cc:621] --------------- Options for column family [default]:
+2024/03/08-13:23:34.195197 140704620079040               Options.comparator: leveldb.BytewiseComparator
+2024/03/08-13:23:34.195198 140704620079040           Options.merge_operator: None
+2024/03/08-13:23:34.195200 140704620079040        Options.compaction_filter: None
+2024/03/08-13:23:34.195201 140704620079040        Options.compaction_filter_factory: None
+2024/03/08-13:23:34.195202 140704620079040  Options.sst_partitioner_factory: None
+2024/03/08-13:23:34.195204 140704620079040         Options.memtable_factory: SkipListFactory
+2024/03/08-13:23:34.195205 140704620079040            Options.table_factory: BlockBasedTable
+2024/03/08-13:23:34.195226 140704620079040            table_factory options:   flush_block_policy_factory: FlushBlockBySizePolicyFactory (0x600003f0cd00)
+  cache_index_and_filter_blocks: 0
+  cache_index_and_filter_blocks_with_high_priority: 1
+  pin_l0_filter_and_index_blocks_in_cache: 0
+  pin_top_level_index_and_filter: 1
+  index_type: 0
+  data_block_index_type: 0
+  index_shortening: 1
+  data_block_hash_table_util_ratio: 0.750000
+  checksum: 4
+  no_block_cache: 0
+  block_cache: 0x60000061c100
+  block_cache_name: LRUCache
+  block_cache_options:
+    capacity : 8388608
+    num_shard_bits : 4
+    strict_capacity_limit : 0
+    memory_allocator : None
+    high_pri_pool_ratio: 0.000
+    low_pri_pool_ratio: 0.000
+  persistent_cache: 0x0
+  block_size: 4096
+  block_size_deviation: 10
+  block_restart_interval: 16
+  index_block_restart_interval: 1
+  metadata_block_size: 4096
+  partition_filters: 0
+  use_delta_encoding: 1
+  filter_policy: nullptr
+  whole_key_filtering: 1
+  verify_compression: 0
+  read_amp_bytes_per_bit: 0
+  format_version: 5
+  enable_index_compression: 1
+  block_align: 0
+  max_auto_readahead_size: 262144
+  prepopulate_block_cache: 0
+  initial_auto_readahead_size: 8192
+  num_file_reads_for_auto_readahead: 2
+2024/03/08-13:23:34.195231 140704620079040        Options.write_buffer_size: 67108864
+2024/03/08-13:23:34.195233 140704620079040  Options.max_write_buffer_number: 2
+2024/03/08-13:23:34.195234 140704620079040          Options.compression: LZ4
+2024/03/08-13:23:34.195236 140704620079040                  Options.bottommost_compression: Disabled
+2024/03/08-13:23:34.195237 140704620079040       Options.prefix_extractor: nullptr
+2024/03/08-13:23:34.195238 140704620079040   Options.memtable_insert_with_hint_prefix_extractor: nullptr
+2024/03/08-13:23:34.195240 140704620079040             Options.num_levels: 7
+2024/03/08-13:23:34.195241 140704620079040        Options.min_write_buffer_number_to_merge: 1
+2024/03/08-13:23:34.195242 140704620079040     Options.max_write_buffer_number_to_maintain: 0
+2024/03/08-13:23:34.195244 140704620079040     Options.max_write_buffer_size_to_maintain: 0
+2024/03/08-13:23:34.195245 140704620079040            Options.bottommost_compression_opts.window_bits: -14
+2024/03/08-13:23:34.195246 140704620079040                  Options.bottommost_compression_opts.level: 32767
+2024/03/08-13:23:34.195248 140704620079040               Options.bottommost_compression_opts.strategy: 0
+2024/03/08-13:23:34.195249 140704620079040         Options.bottommost_compression_opts.max_dict_bytes: 0
+2024/03/08-13:23:34.195250 140704620079040         Options.bottommost_compression_opts.zstd_max_train_bytes: 0
+2024/03/08-13:23:34.195252 140704620079040         Options.bottommost_compression_opts.parallel_threads: 1
+2024/03/08-13:23:34.195253 140704620079040                  Options.bottommost_compression_opts.enabled: false
+2024/03/08-13:23:34.195254 140704620079040         Options.bottommost_compression_opts.max_dict_buffer_bytes: 0
+2024/03/08-13:23:34.195256 140704620079040         Options.bottommost_compression_opts.use_zstd_dict_trainer: true
+2024/03/08-13:23:34.195257 140704620079040            Options.compression_opts.window_bits: -14
+2024/03/08-13:23:34.195258 140704620079040                  Options.compression_opts.level: 32767
+2024/03/08-13:23:34.195260 140704620079040               Options.compression_opts.strategy: 0
+2024/03/08-13:23:34.195261 140704620079040         Options.compression_opts.max_dict_bytes: 0
+2024/03/08-13:23:34.195262 140704620079040         Options.compression_opts.zstd_max_train_bytes: 0
+2024/03/08-13:23:34.195263 140704620079040         Options.compression_opts.use_zstd_dict_trainer: true
+2024/03/08-13:23:34.195265 140704620079040         Options.compression_opts.parallel_threads: 1
+2024/03/08-13:23:34.195266 140704620079040                  Options.compression_opts.enabled: false
+2024/03/08-13:23:34.195267 140704620079040         Options.compression_opts.max_dict_buffer_bytes: 0
+2024/03/08-13:23:34.195269 140704620079040      Options.level0_file_num_compaction_trigger: 4
+2024/03/08-13:23:34.195270 140704620079040          Options.level0_slowdown_writes_trigger: 20
+2024/03/08-13:23:34.195271 140704620079040              Options.level0_stop_writes_trigger: 36
+2024/03/08-13:23:34.195272 140704620079040                   Options.target_file_size_base: 67108864
+2024/03/08-13:23:34.195274 140704620079040             Options.target_file_size_multiplier: 1
+2024/03/08-13:23:34.195275 140704620079040                Options.max_bytes_for_level_base: 268435456
+2024/03/08-13:23:34.195276 140704620079040 Options.level_compaction_dynamic_level_bytes: 0
+2024/03/08-13:23:34.195277 140704620079040          Options.max_bytes_for_level_multiplier: 10.000000
+2024/03/08-13:23:34.195279 140704620079040 Options.max_bytes_for_level_multiplier_addtl[0]: 1
+2024/03/08-13:23:34.195281 140704620079040 Options.max_bytes_for_level_multiplier_addtl[1]: 1
+2024/03/08-13:23:34.195282 140704620079040 Options.max_bytes_for_level_multiplier_addtl[2]: 1
+2024/03/08-13:23:34.195283 140704620079040 Options.max_bytes_for_level_multiplier_addtl[3]: 1
+2024/03/08-13:23:34.195285 140704620079040 Options.max_bytes_for_level_multiplier_addtl[4]: 1
+2024/03/08-13:23:34.195286 140704620079040 Options.max_bytes_for_level_multiplier_addtl[5]: 1
+2024/03/08-13:23:34.195287 140704620079040 Options.max_bytes_for_level_multiplier_addtl[6]: 1
+2024/03/08-13:23:34.195288 140704620079040       Options.max_sequential_skip_in_iterations: 8
+2024/03/08-13:23:34.195290 140704620079040                    Options.max_compaction_bytes: 1677721600
+2024/03/08-13:23:34.195291 140704620079040   Options.ignore_max_compaction_bytes_for_input: true
+2024/03/08-13:23:34.195292 140704620079040                        Options.arena_block_size: 1048576
+2024/03/08-13:23:34.195294 140704620079040   Options.soft_pending_compaction_bytes_limit: 68719476736
+2024/03/08-13:23:34.195295 140704620079040   Options.hard_pending_compaction_bytes_limit: 274877906944
+2024/03/08-13:23:34.195296 140704620079040                Options.disable_auto_compactions: 0
+2024/03/08-13:23:34.195298 140704620079040                        Options.compaction_style: kCompactionStyleLevel
+2024/03/08-13:23:34.195299 140704620079040                          Options.compaction_pri: kMinOverlappingRatio
+2024/03/08-13:23:34.195301 140704620079040 Options.compaction_options_universal.size_ratio: 1
+2024/03/08-13:23:34.195302 140704620079040 Options.compaction_options_universal.min_merge_width: 2
+2024/03/08-13:23:34.195303 140704620079040 Options.compaction_options_universal.max_merge_width: 4294967295
+2024/03/08-13:23:34.195304 140704620079040 Options.compaction_options_universal.max_size_amplification_percent: 200
+2024/03/08-13:23:34.195306 140704620079040 Options.compaction_options_universal.compression_size_percent: -1
+2024/03/08-13:23:34.195307 140704620079040 Options.compaction_options_universal.stop_style: kCompactionStopStyleTotalSize
+2024/03/08-13:23:34.195309 140704620079040 Options.compaction_options_fifo.max_table_files_size: 1073741824
+2024/03/08-13:23:34.195310 140704620079040 Options.compaction_options_fifo.allow_compaction: 0
+2024/03/08-13:23:34.195312 140704620079040                   Options.table_properties_collectors: 
+2024/03/08-13:23:34.195313 140704620079040                   Options.inplace_update_support: 0
+2024/03/08-13:23:34.195314 140704620079040                 Options.inplace_update_num_locks: 10000
+2024/03/08-13:23:34.195315 140704620079040               Options.memtable_prefix_bloom_size_ratio: 0.000000
+2024/03/08-13:23:34.195317 140704620079040               Options.memtable_whole_key_filtering: 0
+2024/03/08-13:23:34.195318 140704620079040   Options.memtable_huge_page_size: 0
+2024/03/08-13:23:34.195320 140704620079040                           Options.bloom_locality: 0
+2024/03/08-13:23:34.195321 140704620079040                    Options.max_successive_merges: 0
+2024/03/08-13:23:34.195322 140704620079040                Options.optimize_filters_for_hits: 0
+2024/03/08-13:23:34.195323 140704620079040                Options.paranoid_file_checks: 0
+2024/03/08-13:23:34.195325 140704620079040                Options.force_consistency_checks: 1
+2024/03/08-13:23:34.195326 140704620079040                Options.report_bg_io_stats: 0
+2024/03/08-13:23:34.195327 140704620079040                               Options.ttl: 2592000
+2024/03/08-13:23:34.195328 140704620079040          Options.periodic_compaction_seconds: 0
+2024/03/08-13:23:34.195330 140704620079040  Options.preclude_last_level_data_seconds: 0
+2024/03/08-13:23:34.195331 140704620079040    Options.preserve_internal_time_seconds: 0
+2024/03/08-13:23:34.195332 140704620079040                       Options.enable_blob_files: false
+2024/03/08-13:23:34.195333 140704620079040                           Options.min_blob_size: 0
+2024/03/08-13:23:34.195335 140704620079040                          Options.blob_file_size: 268435456
+2024/03/08-13:23:34.195336 140704620079040                   Options.blob_compression_type: NoCompression
+2024/03/08-13:23:34.195337 140704620079040          Options.enable_blob_garbage_collection: false
+2024/03/08-13:23:34.195339 140704620079040      Options.blob_garbage_collection_age_cutoff: 0.250000
+2024/03/08-13:23:34.195340 140704620079040 Options.blob_garbage_collection_force_threshold: 1.000000
+2024/03/08-13:23:34.195342 140704620079040          Options.blob_compaction_readahead_size: 0
+2024/03/08-13:23:34.195343 140704620079040                Options.blob_file_starting_level: 0
+2024/03/08-13:23:34.195344 140704620079040 Options.experimental_mempurge_threshold: 0.000000
+2024/03/08-13:23:34.196206 140704620079040 [db/version_set.cc:5713] Recovered from manifest file:./example-walletdb/MANIFEST-025944 succeeded,manifest_file_number is 25944, next_file_number is 25950, last_sequence is 30823, log_number is 25947,prev_log_number is 0,max_column_family is 0,min_log_number_to_keep is 25947
+2024/03/08-13:23:34.196213 140704620079040 [db/version_set.cc:5722] Column family [default] (ID 0), log number is 25947
+2024/03/08-13:23:34.196294 140704620079040 [db/db_impl/db_impl_open.cc:537] DB ID: aa9f7c66-6ef7-4bd7-9e74-59d414b83076
+2024/03/08-13:23:34.199104 140704620079040 EVENT_LOG_v1 {"time_micros": 1709900614199091, "job": 1, "event": "recovery_started", "wal_files": [25947]}
+2024/03/08-13:23:34.199111 140704620079040 [db/db_impl/db_impl_open.cc:1031] Recovering log #25947 mode 2
+2024/03/08-13:23:34.456941 140704620079040 EVENT_LOG_v1 {"time_micros": 1709900614456887, "cf_name": "default", "job": 1, "event": "table_file_creation", "file_number": 25951, "file_size": 4934852, "file_checksum": "", "file_checksum_func_name": "Unknown", "smallest_seqno": 30824, "largest_seqno": 30825, "table_properties": {"data_size": 4933842, "index_size": 71, "index_partitions": 0, "top_level_index_size": 0, "index_key_is_user_key": 1, "index_value_is_delta_encoded": 1, "filter_size": 0, "raw_key_size": 57, "raw_average_key_size": 28, "raw_value_size": 38134838, "raw_average_value_size": 19067419, "num_data_blocks": 2, "num_entries": 2, "num_filter_entries": 0, "num_deletions": 0, "num_merge_operands": 0, "num_range_deletions": 0, "format_version": 0, "fixed_key_len": 0, "filter_policy": "", "column_family_name": "default", "column_family_id": 0, "comparator": "leveldb.BytewiseComparator", "merge_operator": "nullptr", "prefix_extractor_name": "nullptr", "property_collectors": "[]", "compression": "LZ4", "compression_options": "window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1; ", "creation_time": 1709900614, "oldest_key_time": 0, "file_creation_time": 0, "slow_compression_estimated_data_size": 0, "fast_compression_estimated_data_size": 0, "db_id": "aa9f7c66-6ef7-4bd7-9e74-59d414b83076", "db_session_id": "9POWBVLZBXM14W1IK4FB", "orig_file_number": 25951, "seqno_to_time_mapping": "N/A"}}
+2024/03/08-13:23:34.460171 140704620079040 EVENT_LOG_v1 {"time_micros": 1709900614460165, "job": 1, "event": "recovery_finished"}
+2024/03/08-13:23:34.460421 140704620079040 [db/version_set.cc:5180] Creating manifest 25953
+2024/03/08-13:23:34.468865 140704620079040 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025947.log immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:34.468942 140704620079040 [db/db_impl/db_impl_files.cc:650] [JOB 2] Delete info log file ./example-walletdb//LOG.old.1709827837768866
+2024/03/08-13:23:34.470899 140704620079040 [db/db_impl/db_impl_open.cc:1977] SstFileManager instance 0x7f8979083c70
+2024/03/08-13:23:34.471042 123145450209280 [db/compaction/compaction_job.cc:1988] [default] [JOB 3] Compacting 4@0 + 1@1 files to L1, score 1.00
+2024/03/08-13:23:34.471053 123145450209280 [db/compaction/compaction_job.cc:1992] [default]: Compaction start summary: Base version 2 Base level 0, inputs: [25951(4819KB) 25948(4847KB) 25942(4919KB) 25939(4897KB)], [25937(4868KB)]
+2024/03/08-13:23:34.471075 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614471059, "job": 3, "event": "compaction_started", "compaction_reason": "LevelL0FilesNum", "files_L0": [25951, 25948, 25942, 25939], "files_L1": [25937], "score": 1, "input_data_size": 24935556, "oldest_snapshot_seqno": -1}
+2024/03/08-13:23:34.472570 140704620079040 DB pointer 0x7f8979885a00
+2024/03/08-13:23:34.472888 123145451282432 [db/db_impl/db_impl.cc:1085] ------- DUMPING STATS -------
+2024/03/08-13:23:34.472896 123145451282432 [db/db_impl/db_impl.cc:1086] 
+** DB Stats **
+Uptime(secs): 0.3 total, 0.3 interval
+Cumulative writes: 0 writes, 0 keys, 0 commit groups, 0.0 writes per commit group, ingest: 0.00 GB, 0.00 MB/s
+Cumulative WAL: 0 writes, 0 syncs, 0.00 writes per sync, written: 0.00 GB, 0.00 MB/s
+Cumulative stall: 00:00:0.000 H:M:S, 0.0 percent
+Interval writes: 0 writes, 0 keys, 0 commit groups, 0.0 writes per commit group, ingest: 0.00 MB, 0.00 MB/s
+Interval WAL: 0 writes, 0 syncs, 0.00 writes per sync, written: 0.00 GB, 0.00 MB/s
+Interval stall: 00:00:0.000 H:M:S, 0.0 percent
+Write Stall (count): write-buffer-manager-limit-stops: 0, 
+** Compaction Stats [default] **
+Level    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop Rblob(GB) Wblob(GB)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  L0      4/4   19.03 MB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   1.0      0.0     80.3      0.06              0.00         1    0.059       0      0       0.0       0.0
+  L1      1/1    4.75 MB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   0.0      0.0      0.0      0.00              0.00         0    0.000       0      0       0.0       0.0
+ Sum      5/5   23.78 MB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   1.0      0.0     80.3      0.06              0.00         1    0.059       0      0       0.0       0.0
+ Int      0/0    0.00 KB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   1.0      0.0     80.3      0.06              0.00         1    0.059       0      0       0.0       0.0
+
+** Compaction Stats [default] **
+Priority    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop Rblob(GB) Wblob(GB)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+User      0/0    0.00 KB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   0.0      0.0     80.3      0.06              0.00         1    0.059       0      0       0.0       0.0
+
+Blob file count: 0, total size: 0.0 GB, garbage size: 0.0 GB, space amp: 0.0
+
+Uptime(secs): 0.3 total, 0.3 interval
+Flush(GB): cumulative 0.005, interval 0.005
+AddFile(GB): cumulative 0.000, interval 0.000
+AddFile(Total Files): cumulative 0, interval 0
+AddFile(L0 Files): cumulative 0, interval 0
+AddFile(Keys): cumulative 0, interval 0
+Cumulative compaction: 0.00 GB write, 16.95 MB/s write, 0.00 GB read, 0.00 MB/s read, 0.1 seconds
+Interval compaction: 0.00 GB write, 16.95 MB/s write, 0.00 GB read, 0.00 MB/s read, 0.1 seconds
+Write Stall (count): cf-l0-file-count-limit-delays-with-ongoing-compaction: 0, cf-l0-file-count-limit-stops-with-ongoing-compaction: 0, l0-file-count-limit-delays: 0, l0-file-count-limit-stops: 0, memtable-limit-delays: 0, memtable-limit-stops: 0, pending-compaction-bytes-delays: 0, pending-compaction-bytes-stops: 0, total-delays: 0, total-stops: 0, Block cache LRUCache@0x60000061c100#7068 capacity: 8.00 MB usage: 0.08 KB table_size: 256 occupancy: 87 collections: 1 last_copies: 0 last_secs: 2.3e-05 secs_since: 0
+Block cache entry stats(count,size,portion): Misc(1,0.00 KB,0%)
+
+** File Read Latency Histogram By Level [default] **
+2024/03/08-13:23:34.693141 123145450209280 [db/compaction/compaction_job.cc:1592] [default] [JOB 3] Generated table #25956: 7 keys, 4935941 bytes, temperature: kUnknown
+2024/03/08-13:23:34.693200 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614693165, "cf_name": "default", "job": 3, "event": "table_file_creation", "file_number": 25956, "file_size": 4935941, "file_checksum": "", "file_checksum_func_name": "Unknown", "smallest_seqno": 0, "largest_seqno": 0, "table_properties": {"data_size": 4934898, "index_size": 67, "index_partitions": 0, "top_level_index_size": 0, "index_key_is_user_key": 1, "index_value_is_delta_encoded": 1, "filter_size": 0, "raw_key_size": 212, "raw_average_key_size": 30, "raw_value_size": 38136223, "raw_average_value_size": 5448031, "num_data_blocks": 2, "num_entries": 7, "num_filter_entries": 0, "num_deletions": 0, "num_merge_operands": 0, "num_range_deletions": 0, "format_version": 0, "fixed_key_len": 0, "filter_policy": "", "column_family_name": "default", "column_family_id": 0, "comparator": "leveldb.BytewiseComparator", "merge_operator": "nullptr", "prefix_extractor_name": "nullptr", "property_collectors": "[]", "compression": "LZ4", "compression_options": "window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1; ", "creation_time": 1709028363, "oldest_key_time": 0, "file_creation_time": 1709900614, "slow_compression_estimated_data_size": 0, "fast_compression_estimated_data_size": 0, "db_id": "aa9f7c66-6ef7-4bd7-9e74-59d414b83076", "db_session_id": "9POWBVLZBXM14W1IK4FB", "orig_file_number": 25956, "seqno_to_time_mapping": "N/A"}}
+2024/03/08-13:23:34.696569 123145450209280 (Original Log Time 2024/03/08-13:23:34.696204) [db/compaction/compaction_job.cc:1663] [default] [JOB 3] Compacted 4@0 + 1@1 files to L1 => 4935941 bytes
+2024/03/08-13:23:34.696574 123145450209280 (Original Log Time 2024/03/08-13:23:34.696498) [db/compaction/compaction_job.cc:885] [default] compacted to: files[0 1 0 0 0 0 0] max score 0.02, MB/sec: 110.9 rd, 22.0 wr, level 1, files in(4, 1) out(1 +0 blob) MB in(19.0, 4.8 +0.0 blob) out(4.7 +0.0 blob), read-write-amplify(1.5) write-amplify(0.2) OK, records in: 19, records dropped: 12 output_compression: LZ4
+2024/03/08-13:23:34.696579 123145450209280 (Original Log Time 2024/03/08-13:23:34.696525) EVENT_LOG_v1 {"time_micros": 1709900614696508, "job": 3, "event": "compaction_finished", "compaction_time_micros": 224843, "compaction_time_cpu_micros": 222544, "output_level": 1, "num_output_files": 1, "total_output_size": 4935941, "num_input_records": 19, "num_output_records": 7, "num_subcompactions": 1, "output_compression": "LZ4", "num_single_delete_mismatches": 0, "num_single_delete_fallthrough": 0, "lsm_state": [0, 1, 0, 0, 0, 0, 0]}
+2024/03/08-13:23:34.696939 123145450209280 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025951.sst immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:34.696952 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614696947, "job": 3, "event": "table_file_deletion", "file_number": 25951}
+2024/03/08-13:23:34.697249 123145450209280 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025948.sst immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:34.697259 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614697255, "job": 3, "event": "table_file_deletion", "file_number": 25948}
+2024/03/08-13:23:34.697555 123145450209280 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025942.sst immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:34.697564 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614697561, "job": 3, "event": "table_file_deletion", "file_number": 25942}
+2024/03/08-13:23:34.697878 123145450209280 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025939.sst immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:34.697894 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614697889, "job": 3, "event": "table_file_deletion", "file_number": 25939}
+2024/03/08-13:23:34.698246 123145450209280 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025937.sst immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:34.698257 123145450209280 EVENT_LOG_v1 {"time_micros": 1709900614698253, "job": 3, "event": "table_file_deletion", "file_number": 25937}
+2024/03/08-13:23:43.036814 140704620079040 [db/db_impl/db_impl_write.cc:2149] [default] New memtable created with log file: #25957. Immutable memtables: 0.
+2024/03/08-13:23:43.037145 123145450745856 (Original Log Time 2024/03/08-13:23:43.037090) [db/db_impl/db_impl_compaction_flush.cc:2926] Calling FlushMemTableToOutputFile with column family [default], flush slots available 1, compaction slots available 1, flush slots scheduled 1, compaction slots scheduled 0
+2024/03/08-13:23:43.037157 123145450745856 [db/flush_job.cc:859] [default] [JOB 4] Flushing memtable with next log file: 25957
+2024/03/08-13:23:43.037199 123145450745856 EVENT_LOG_v1 {"time_micros": 1709900623037176, "job": 4, "event": "flush_started", "num_memtables": 1, "num_entries": 6, "num_deletes": 0, "total_data_size": 76274424, "memory_usage": 76275248, "flush_reason": "Write Buffer Full"}
+2024/03/08-13:23:43.037214 123145450745856 [db/flush_job.cc:888] [default] [JOB 4] Level-0 flush table #25958: started
+2024/03/08-13:23:43.108447 123145450745856 EVENT_LOG_v1 {"time_micros": 1709900623108391, "cf_name": "default", "job": 4, "event": "table_file_creation", "file_number": 25958, "file_size": 4971729, "file_checksum": "", "file_checksum_func_name": "Unknown", "smallest_seqno": 30826, "largest_seqno": 30831, "table_properties": {"data_size": 4970683, "index_size": 67, "index_partitions": 0, "top_level_index_size": 0, "index_key_is_user_key": 1, "index_value_is_delta_encoded": 1, "filter_size": 0, "raw_key_size": 114, "raw_average_key_size": 28, "raw_value_size": 38137491, "raw_average_value_size": 9534372, "num_data_blocks": 2, "num_entries": 4, "num_filter_entries": 0, "num_deletions": 0, "num_merge_operands": 0, "num_range_deletions": 0, "format_version": 0, "fixed_key_len": 0, "filter_policy": "", "column_family_name": "default", "column_family_id": 0, "comparator": "leveldb.BytewiseComparator", "merge_operator": "nullptr", "prefix_extractor_name": "nullptr", "property_collectors": "[]", "compression": "LZ4", "compression_options": "window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1; ", "creation_time": 1709900614, "oldest_key_time": 1709900614, "file_creation_time": 1709900623, "slow_compression_estimated_data_size": 0, "fast_compression_estimated_data_size": 0, "db_id": "aa9f7c66-6ef7-4bd7-9e74-59d414b83076", "db_session_id": "9POWBVLZBXM14W1IK4FB", "orig_file_number": 25958, "seqno_to_time_mapping": "N/A"}}
+2024/03/08-13:23:43.108643 123145450745856 [db/flush_job.cc:1021] [default] [JOB 4] Flush lasted 71508 microseconds, and 68935 cpu microseconds.
+2024/03/08-13:23:43.109224 123145450745856 (Original Log Time 2024/03/08-13:23:43.108616) [db/flush_job.cc:974] [default] [JOB 4] Level-0 flush table #25958: 4971729 bytes OK
+2024/03/08-13:23:43.109228 123145450745856 (Original Log Time 2024/03/08-13:23:43.108653) [db/memtable_list.cc:521] [default] Level-0 commit table #25958 started
+2024/03/08-13:23:43.109231 123145450745856 (Original Log Time 2024/03/08-13:23:43.109132) [db/memtable_list.cc:721] [default] Level-0 commit table #25958: memtable #1 done
+2024/03/08-13:23:43.109233 123145450745856 (Original Log Time 2024/03/08-13:23:43.109159) EVENT_LOG_v1 {"time_micros": 1709900623109148, "job": 4, "event": "flush_finished", "output_compression": "LZ4", "lsm_state": [1, 1, 0, 0, 0, 0, 0], "immutable_memtables": 0}
+2024/03/08-13:23:43.109235 123145450745856 (Original Log Time 2024/03/08-13:23:43.109178) [db/db_impl/db_impl_compaction_flush.cc:295] [default] Level summary: files[1 1 0 0 0 0 0] max score 0.25
+2024/03/08-13:23:43.109240 123145450745856 [db/db_impl/db_impl_files.cc:469] [JOB 4] Try to delete WAL files size 76274454, prev total WAL file size 76274492, number of live WAL files 2.
+2024/03/08-13:23:43.112584 123145450745856 [file/delete_scheduler.cc:77] Deleted file ./example-walletdb/025952.log immediately, rate_bytes_per_sec 0, total_trash_size 0 max_trash_db_ratio 0.250000
+2024/03/08-13:23:43.462828 140704620079040 [db/db_impl/db_impl.cc:490] Shutdown: canceling all background work
+2024/03/08-13:23:43.468637 140704620079040 [db/db_impl/db_impl.cc:692] Shutdown complete
