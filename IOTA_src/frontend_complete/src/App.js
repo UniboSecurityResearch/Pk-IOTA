@@ -11,6 +11,7 @@ import WalletForm from "./components/WalletForm";
 import RevokeCert from "./components/RevokeCert";
 import RevokeCertByID from "./components/RevokeCertByID";
 import Test from "./components/Test";
+import { wait } from "@testing-library/user-event/dist/cjs/utils/index.js";
 
 var done = false;
 // Subscriber method
@@ -99,7 +100,8 @@ function App() {
       console.log("subscription...");
       agetBalance();
       subscribeNewCert(scbackend,"sendCertificate");
-      subscribeRevoke(scbackend,"revokedCertificate");
+      setTimeout(()=> {subscribeRevoke(scbackend,"revokedCertificate");},5000);
+      
       
     }
 

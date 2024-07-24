@@ -1,6 +1,6 @@
 {
   "port": 8080,
   "bodyLimit": "1kb",
-  "iotaNetwork": "wss://ws.json-rpc.evm.testnet.iotaledger.net"
+  "iotaNetwork": "wss://node.pkiota.it/wasp/api/v1/chains/tst1pp9tk4mgvftepwn6y6anxe2s8c8nr4zpvmwdx3vh4kfwau6g98d5jqhav3u/evm/ws"
 }
 
