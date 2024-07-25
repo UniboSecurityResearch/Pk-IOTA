@@ -4,7 +4,7 @@ Example of frontend application which connects to the smart contract to use the 
 **This work with nodejs version 22.0.0** !! Use n ( _npm install -g n_ ) to select the rigth version ( _sudo n 22.0.0_ )
 <br>
 <br>
-**Currently, the interaction with the IOTA blockchain does not work properly using web3 version 4+; therefore, this project use the legacy version of web3 1.10.4.**
+**Currently, the interaction with the IOTA blockchain does not work properly using web3 version 4+; therefore, this project use the legacy version of web3 1.10.4 and web3-utils 1.10.4 (and also web3 v 1.2.11 seems to be working fine).**
 
 ## Instructions
 
