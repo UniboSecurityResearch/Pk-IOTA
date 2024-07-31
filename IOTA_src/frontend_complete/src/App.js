@@ -10,8 +10,9 @@ import GetAllCerts from "./components/GetAllCerts";
 import WalletForm from "./components/WalletForm";
 import RevokeCert from "./components/RevokeCert";
 import RevokeCertByID from "./components/RevokeCertByID";
-import Test from "./components/Test";
+import Test from "./components/Test-manuale";
 import { wait } from "@testing-library/user-event/dist/cjs/utils/index.js";
+import Testmanuale from "./components/Test-manuale";
 
 var done = false;
 // Subscriber method
@@ -148,7 +149,7 @@ function App() {
       <hr />
       <br></br>
       <br></br>
-      <Test setMessage={setMessage} />
+      <Testmanuale setMessage={setMessage} />
       <hr />
       <h4>@beawareoftheg GG</h4>
     </div>
