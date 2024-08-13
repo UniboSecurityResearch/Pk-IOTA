@@ -11,7 +11,7 @@ function Testmanuale({ setMessage }) {
   const [number, setNumber] = useState(0);
   var test_pem_time = useState("");
   var certificate_txt = useState("");
-  fetch(certTxt).then(r => r.text()).then(text => {
+  fetch(certPem).then(r => r.text()).then(text => {
     //console.log('text decoded:', text);
     certificate_txt = (' ' + text).slice(1);
   });
@@ -22,7 +22,7 @@ function Testmanuale({ setMessage }) {
    var expireDate = 2022162618;
    var stampa = "";
    //console.log(certificate_txt);
-   for(var i = 54; i < number; i++){
+   for(var i = 0; i < number; i++){
       setMessage("Running test n." + i);
       stampa += i + " - " + Date.now() + " - ";
       try {
