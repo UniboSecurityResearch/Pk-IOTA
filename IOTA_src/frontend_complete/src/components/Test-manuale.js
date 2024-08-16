@@ -11,7 +11,7 @@ function Testmanuale({ setMessage }) {
   const [number, setNumber] = useState(0);
   var test_pem_time = useState("");
   var certificate_txt = useState("");
-  fetch(certPem).then(r => r.text()).then(text => {
+  fetch(certTxt).then(r => r.text()).then(text => {
     //console.log('text decoded:', text);
     certificate_txt = (' ' + text).slice(1);
   });

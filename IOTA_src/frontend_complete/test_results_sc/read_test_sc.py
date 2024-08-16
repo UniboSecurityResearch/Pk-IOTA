@@ -1,7 +1,7 @@
 
 tot_times = 0
 num = 0
-with open("test_receive_EU-AUST_pem.txt") as test_receive, open("risultato_test_send_EU-AUST_pem.txt") as test_sender: 
+with open("test_receive_EU-EU_pem.txt") as test_receive, open("test_send_EU-EU_pem.txt") as test_sender: 
         for x, y in zip(test_receive, test_sender):
             x = x.strip()
             y = y.strip()
