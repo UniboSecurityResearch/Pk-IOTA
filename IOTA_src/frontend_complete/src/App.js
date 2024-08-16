@@ -100,8 +100,8 @@ function App() {
       done = true;
       console.log("subscription...");
       agetBalance();
-      subscribeNewCert(scbackend,"sendCertificate");
-      setTimeout(()=> {subscribeRevoke(scbackend,"revokedCertificate");},5000);
+      setTimeout(()=> {subscribeNewCert(scbackend,"sendCertificate");},3000);
+      setTimeout(()=> {subscribeRevoke(scbackend,"revokedCertificate");},7000);
       
       
     }

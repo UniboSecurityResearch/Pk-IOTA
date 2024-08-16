@@ -1,6 +1,6 @@
 {
   "port": 8080,
   "bodyLimit": "1kb",
-  "iotaNetwork": "wss://sender.pkiota.it/wasp/api/v1/chains/tst1pqdxs6kawv37czr4y0fjhz8vhzz7f5nlxk87kyy6utw5n72qswq6k5qh4mc/evm/ws"
+  "iotaNetwork": "wss://node.pkiota.it/wasp/api/v1/chains/tst1pqj5g9ftp46ytrn34ewclgtj48sfg0ue6kk6ypmkr9xfc4y20s5gqm664ur/evm/ws"
 }
 
