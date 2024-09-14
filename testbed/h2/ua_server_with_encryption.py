@@ -18,7 +18,7 @@ from asyncua.crypto.truststore import TrustStore
 logging.basicConfig(level=logging.INFO)
 
 
-USE_TRUST_STORE = False
+USE_TRUST_STORE = True
 
 async def main():
     cert_base = Path(__file__).parent
@@ -29,10 +29,10 @@ async def main():
     server_app_uri = f"urn:t14:Ulisse:UA_server"
 
 
-    # cert_user_manager = CertificateUserManager()
-    # await cert_user_manager.add_user("certificates/peer-certificate-example-1.der", name='test_user')
+    cert_user_manager = CertificateUserManager()
+    await cert_user_manager.add_user("certificates/trusted/certs/client-certificate.der", name='test_user')
 
-    # server = Server(user_manager=cert_user_manager)
+    server = Server(user_manager=cert_user_manager)
     server = Server()
 
     await server.init()
@@ -50,10 +50,9 @@ async def main():
                                         host_name,
                                         [ExtendedKeyUsageOID.CLIENT_AUTH, ExtendedKeyUsageOID.SERVER_AUTH],
                                         {
-                                            'countryName': 'CN',
-                                            'stateOrProvinceName': 'AState',
-                                            'localityName': 'Foo',
-                                            'organizationName': "Bar Ltd",
+                                            'countryName': 'IT',
+                                            'localityName': 'Bologna',
+                                            'commonName': "uaserver",
                                         })
 
     # load server certificate and private key. This enables endpoints
@@ -64,14 +63,14 @@ async def main():
     if USE_TRUST_STORE:
         trust_store = TrustStore([Path('examples') / 'certificates' / 'trusted' / 'certs'], [])
         await trust_store.load()
-        validator = CertificateValidator(options=CertificateValidatorOptions.TRUSTED_VALIDATION | CertificateValidatorOptions.PEER_CLIENT,
+        validator = CertificateValidator(options=CertificateValidatorOptions.BASIC_VALIDATION | CertificateValidatorOptions.PEER_CLIENT,
                                          trust_store = trust_store)
     else:
         validator = CertificateValidator(options=CertificateValidatorOptions.BASIC_VALIDATION | CertificateValidatorOptions.PEER_CLIENT)
     server.set_certificate_validator(validator)
 
     # set up our own namespace, not really necessary but should as spec
-    uri = "http://examples.freeopcua.github.io"
+    uri = "http://example.org/server"
     idx = await server.register_namespace(uri)
 
     # populating our address space

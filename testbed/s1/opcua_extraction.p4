@@ -8,12 +8,9 @@
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<16> IPV4_LEN = 16w20;
 const bit<24> OPN = 0x4f504e; //OPN = OpenSecureChannel message type
+const bit<32> NULLCERTSTRING = 0xffffffff; // Value used for indicating that the security policy is None and there will be no certificate
 
-// supported certificate lengths: 2048*100. Set to 20 for testing purposes.
-#ifndef NUM_WORDS
-	#define NUM_WORDS 20
-#endif
-
+// supported certificate lengths: 2048*100.
 #define CHUNK_SIZE 2048
 #define MAX_CHUNKS 100
 
@@ -46,8 +43,9 @@ header tcp_t {
     bit<32> sequence;
     bit<32> ack;
     bit<4> dataOffset;
-    bit<3> flags;
-    bit<9> window;
+    bit<4> reserved;
+    bit<8> flags;
+    bit<16> window;
     bit<16> checksum;
     bit<16> urgentPtr;
 }
@@ -113,7 +111,7 @@ struct headers {
     opcua_security_hdr1_t opcua_security_hdr1;
     opcua_security_hdr2_pol_t opcua_security_hdr2_pol;
     opcua_security_hdr3_certLength_t opcua_security_hdr3_certLength;
-    opcua_security_hdr4_cert_t[100] opcuaSenderCertificate;
+    opcua_security_hdr4_cert_t[MAX_CHUNKS] opcuaSenderCertificate;
     opcua_security_hdr5_cert_final_t opcuaSenderCertificateFinal;
     opcua_security_hdr6_thumb_t opcua_security_hdr_thumb;
 }
@@ -126,6 +124,15 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
+
+    bit<32> policyUriLength_bits;
+    bit<32> cert_bits;
+    bit<32> cert_bytes;
+    bit<8> hex1;
+    bit<8> hex2;
+    bit<8> hex3;
+    bit<8> hex4;
+    bit<32> remaining;
 
     state start {
        transition parse_ethernet;
@@ -143,7 +150,7 @@ parser MyParser(packet_in packet,
         packet.extract(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
             6: parse_tcp;  // Protocol 6 corresponds to TCP
-            _ : accept;    // For other protocols, skip to accept
+            _: accept;    // For other protocols, skip to accept
         }
     }
 
@@ -193,42 +200,74 @@ parser MyParser(packet_in packet,
     }
 
     state parse_opcua_security_hdr2 {
-        packet.extract(hdr.opcua_security_hdr2_pol, (bit<32>)(hdr.opcua_security_hdr1.securityPolicyUriLength * 8));
+        // First I need to convert the securityPolicyUriLength to little endian
+        hex1 = hdr.opcua_security_hdr1.securityPolicyUriLength[31:24];
+        hex2 = hdr.opcua_security_hdr1.securityPolicyUriLength[23:16];
+        hex3 = hdr.opcua_security_hdr1.securityPolicyUriLength[15:8];
+        hex4 = hdr.opcua_security_hdr1.securityPolicyUriLength[7:0];
+
+        policyUriLength_bits = (bit<32>)(hex4 ++ hex3 ++ hex2 ++ hex1);
+        policyUriLength_bits = policyUriLength_bits * 32w8;
+
+        // Debugging logs
+        // log_msg("URI LENGTH BITS: {}", {policyUriLength_bits});
+        // log_msg("hex1: {}, hex2: {}, hex3: {}, hex4: {}", {hex1, hex2, hex3, hex4});
+        packet.extract(hdr.opcua_security_hdr2_pol, policyUriLength_bits);
         transition parse_opcua_security_hdr3;
     }
 
     state parse_opcua_security_hdr3 {
         packet.extract(hdr.opcua_security_hdr3_certLength);
-        transition check_cert_length;
+
+        // Convert the senderCertificateLength to little endian
+        hex1 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[31:24];
+        hex2 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[23:16];
+        hex3 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[15:8];
+        hex4 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[7:0];
+
+        cert_bytes = (bit<32>)(hex4 ++ hex3 ++ hex2 ++ hex1);
+        remaining = cert_bytes;
+        // log_msg("CERT LENGTH BYTES: {}", {cert_bytes});
+        cert_bits = cert_bytes * 32w8;
+
+        // Debugging logs
+        // log_msg("CERT LENGTH BITS: {}", {cert_bits});
+        // log_msg("hex1: {}, hex2: {}, hex3: {}, hex4: {}", {hex1, hex2, hex3, hex4});
+
+        transition select((bit<32>)(hdr.opcua_security_hdr3_certLength.senderCertificateLength)) {
+            // 0xffffffff is the "Null" string used for Security Policy None: accept for testing purposes, should be set to drop in production!
+            NULLCERTSTRING : accept;
+            _ : check_cert_length;
+        }
     }
 
     state check_cert_length {
         // The last block is always the one with variable length
-        transition select(hdr.opcua_security_hdr3_certLength.senderCertificateLength > 255) {
-            0 : parse_certificate_only_ending_part;
-            1 : parse_certificate;
+        // log_msg("CERT LENGTH BYTES: {}", {cert_bytes});
+        transition select(cert_bytes > 255) {
+            false : parse_certificate_only_ending_part;
+            true : parse_certificate;
         }
     }
 
     state parse_certificate {
-        packet.extract(hdr.opcua_senderCertificate.next);
-        
-        // We read by blocks of 256 bytes. If the certificate is not fully read, we need to read the next block.
-        transition select(hdr.opcua_security_hdr3_certLength.senderCertificateLength / 256 - (hdr.opcua_senderCertificate.lastIndex + 1) > 1) {
-            0 : parse_opcua_security_hdr6_thumb;
-            _ : parse_opcua_security_hdr4;
+        packet.extract(hdr.opcuaSenderCertificate.next);
+        remaining = remaining - 256;
+        // log_msg("CERT LENGTH BYTES REMAINING: {}", {remaining});
+        transition select(remaining > 255){
+            false : parse_certificate_ending_part;
+            true : parse_certificate;
         }
     }
 
     state parse_certificate_ending_part {
         // We calculate the length of the last certificate block
-        bit<32> calculated_length = (bit<32>)(hdr.opcua_security_hdr3_certLength.senderCertificateLength - (hdr.opcua_senderCertificate.lastIndex * 256));
-        packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(calculated_length));
+        packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(remaining * 8));
         transition parse_opcua_security_hdr6_thumb;
     }
 
     state parse_certificate_only_ending_part {
-        packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(calculated_length));
+        packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(cert_bytes));
         transition parse_opcua_security_hdr6_thumb;
     }
 
@@ -254,6 +293,8 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
+    bit<160> certThumbprint;
+
     action drop() {
         mark_to_drop(standard_metadata);
     }
@@ -262,9 +303,21 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = egress_port;
     }
 
+    table thumbprint_table {
+        key = {
+            hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint : exact;
+        }
+        actions = {
+            NoAction;
+            drop;
+        }
+        size = 1024;
+        default_action = drop;
+    }
+
     table dmac_forward {
         key = {
-            hdr.ethernet.dstAddr: exact;
+            hdr.ethernet.dstAddr : exact;
         }
         actions = {
             forward_to_port;
@@ -274,8 +327,28 @@ control MyIngress(inout headers hdr,
         default_action = drop;
     }
 
+    table debug {
+		key = {
+			hdr.opcua.messageType : exact;
+            hdr.opcua.isFinal : exact;
+            hdr.opcua.messageSize : exact;
+            hdr.opcua_security_hdr1.secureChannelId : exact;
+            hdr.opcua_security_hdr1.securityPolicyUriLength : exact;
+            hdr.opcua_security_hdr3_certLength.senderCertificateLength : exact;
+            hdr.opcua_security_hdr_thumb.receiverCertificateThumbprintLength : exact;
+            hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint : exact;
+		}
+	actions = { NoAction; }
+	const default_action = NoAction;
+	}
+
     apply {
         dmac_forward.apply();
+        if (hdr.opcua.messageType == OPN) {
+            debug.apply();
+            //certThumbprint = hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint; //Invocare extern
+            thumbprint_table.apply();
+        }
     }
 }
 
@@ -307,7 +380,13 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ipv4);
         packet.emit(hdr.tcp);
         packet.emit(hdr.tcp_options);
-        packet.emit(hdr.opcua); 
+        packet.emit(hdr.opcua);
+        packet.emit(hdr.opcua_security_hdr1);
+        packet.emit(hdr.opcua_security_hdr2_pol);
+        packet.emit(hdr.opcua_security_hdr3_certLength);
+        packet.emit(hdr.opcuaSenderCertificate);
+        packet.emit(hdr.opcuaSenderCertificateFinal);
+        packet.emit(hdr.opcua_security_hdr_thumb);
     }
 }
 

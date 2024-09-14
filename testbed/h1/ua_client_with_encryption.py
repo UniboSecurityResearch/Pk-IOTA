@@ -16,7 +16,7 @@ from asyncua import ua
 logging.basicConfig(level=logging.DEBUG)
 _logger = logging.getLogger(__name__)
 
-USE_TRUST_STORE = False
+USE_TRUST_STORE = True
 
 cert_base = Path(__file__).parent
 cert = Path(cert_base / f"client-certificate.der")
@@ -34,9 +34,10 @@ async def task(loop):
                                         [ExtendedKeyUsageOID.CLIENT_AUTH],
                                         {
                                             'countryName': 'IT',
-                                            'stateOrProvinceName': 'IT',
-                                            'localityName': '',
-                                            'organizationName': "Bar Ltd",
+                                            'localityName': 'Bologna',
+                                            'Organization': "Unibo",
+                                            'OrganizationalUnit': "Ulisse",
+                                            'commonName': "uaclient",
                                         })
     client = Client(url=url)
     client.application_uri = client_app_uri
@@ -44,7 +45,7 @@ async def task(loop):
         SecurityPolicyBasic256Sha256,
         certificate=str(cert),
         private_key=str(private_key),
-        #server_certificate="/certificates/trusted/certs/server-certificate.der"
+        server_certificate="/certificates/trusted/certs/server-certificate.der"
     )
 
     if USE_TRUST_STORE:
