@@ -327,26 +327,25 @@ control MyIngress(inout headers hdr,
         default_action = drop;
     }
 
-    table debug {
-		key = {
-			hdr.opcua.messageType : exact;
-            hdr.opcua.isFinal : exact;
-            hdr.opcua.messageSize : exact;
-            hdr.opcua_security_hdr1.secureChannelId : exact;
-            hdr.opcua_security_hdr1.securityPolicyUriLength : exact;
-            hdr.opcua_security_hdr3_certLength.senderCertificateLength : exact;
-            hdr.opcua_security_hdr_thumb.receiverCertificateThumbprintLength : exact;
-            hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint : exact;
-		}
-	actions = { NoAction; }
-	const default_action = NoAction;
-	}
+    // table debug {
+	// 	key = {
+	// 		hdr.opcua.messageType : exact;
+    //         hdr.opcua.isFinal : exact;
+    //         hdr.opcua.messageSize : exact;
+    //         hdr.opcua_security_hdr1.secureChannelId : exact;
+    //         hdr.opcua_security_hdr1.securityPolicyUriLength : exact;
+    //         hdr.opcua_security_hdr3_certLength.senderCertificateLength : exact;
+    //         hdr.opcua_security_hdr_thumb.receiverCertificateThumbprintLength : exact;
+    //         hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint : exact;
+	// 	}
+	// actions = { NoAction; }
+	// const default_action = NoAction;
+	// }
 
     apply {
         dmac_forward.apply();
         if (hdr.opcua.messageType == OPN) {
-            debug.apply();
-            //certThumbprint = hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint; //Invocare extern
+            // debug.apply();
             thumbprint_table.apply();
         }
     }
