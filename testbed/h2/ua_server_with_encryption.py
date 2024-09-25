@@ -15,7 +15,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID
 from asyncua.crypto.truststore import TrustStore
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 USE_TRUST_STORE = True
@@ -26,7 +26,7 @@ async def main():
     server_private_key = Path(cert_base / "server-private-key.pem")
 
     host_name = socket.gethostname()
-    server_app_uri = f"urn:t14:Ulisse:UA_server"
+    server_app_uri = f"urn:{host_name}:Ulisse:UA_server"
 
 
     cert_user_manager = CertificateUserManager()
@@ -51,8 +51,9 @@ async def main():
                                         [ExtendedKeyUsageOID.CLIENT_AUTH, ExtendedKeyUsageOID.SERVER_AUTH],
                                         {
                                             'countryName': 'IT',
+                                            'stateOrProvinceName': 'IT',
                                             'localityName': 'Bologna',
-                                            'commonName': "uaserver",
+                                            'organizationName': "UniBo",
                                         })
 
     # load server certificate and private key. This enables endpoints

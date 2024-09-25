@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import sys
 import socket
 from pathlib import Path
@@ -11,10 +10,7 @@ from asyncua.crypto.cert_gen import setup_self_signed_certificate
 from asyncua.crypto.validator import CertificateValidator, CertificateValidatorOptions
 from asyncua.crypto.truststore import TrustStore
 from asyncua import ua
-
-
-logging.basicConfig(level=logging.DEBUG)
-_logger = logging.getLogger(__name__)
+import time
 
 USE_TRUST_STORE = True
 
@@ -38,14 +34,16 @@ async def task(loop):
                                             'localityName': 'Bologna',
                                             'organizationName': "UniBo",
                                         })
-    client = Client(url=url)
+    client = Client(url=url, timeout=10)
     client.application_uri = client_app_uri
     await client.set_security(
         SecurityPolicyBasic256Sha256,
         certificate=str(cert),
         private_key=str(private_key),
-        server_certificate="/certificates/trusted/certs/server-certificate.der"
+        server_certificate="./certificates/trusted/certs/server-certificate.der"
     )
+
+    client.secure_channel_timeout = 3600000
 
     if USE_TRUST_STORE:
         trust_store = TrustStore([Path('') / 'certificates' / 'trusted' / 'certs'], [])
@@ -55,16 +53,17 @@ async def task(loop):
     else:
         validator =CertificateValidator(CertificateValidatorOptions.BASIC_VALIDATION|CertificateValidatorOptions.PEER_SERVER)
     client.certificate_validator = validator
-    try:
-        async with client:
-            objects = client.nodes.objects
-            child = await objects.get_child(['0:MyObject', '0:MyVariable'])
-            print(await child.get_value())
-            await child.set_value(42)
-            print(await child.get_value())
-    except ua.UaError as exp:
-        _logger.error(exp)
 
+    # Open file to save results
+    file_path = ".results_conn.txt"
+    with open(file_path, 'w') as file:
+        for i in range(1000):
+            timestamp = time.time()
+            await client.connect()
+            timestamp = time.time() - timestamp
+            file.write(str(timestamp) + "\n")
+            print(i, timestamp, "\n")
+            client.disconnect()
 
 def main():
     loop = asyncio.get_event_loop()

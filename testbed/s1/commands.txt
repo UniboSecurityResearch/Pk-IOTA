@@ -1,5 +1,5 @@
 table_add dmac_forward forward_to_port 00:00:0a:00:00:01 => 1
 table_add dmac_forward forward_to_port 00:00:0a:00:00:02 => 2
-table_add thumbprint_table NoAction 0xde6cb0611d1ac80edb727317b6d0141ee9674333 =>
-table_add thumbprint_table NoAction 0xb01cf6c7d19c3abf17d0ace6ad0dc8f8da3efd1d =>
+table_add thumbprint_table NoAction 0x1aa9d3a88c7882a5c28d1f5d75801267f0eee3a6 =>
+table_add thumbprint_table NoAction 0x60b82f178061876ced3a6521bcfc01eed93496d5 =>
 EOF
