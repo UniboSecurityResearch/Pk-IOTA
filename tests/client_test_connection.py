@@ -43,8 +43,6 @@ async def task(loop):
         server_certificate="./certificates/trusted/certs/server-certificate.der"
     )
 
-    client.secure_channel_timeout = 3600000
-
     if USE_TRUST_STORE:
         trust_store = TrustStore([Path('') / 'certificates' / 'trusted' / 'certs'], [])
         await trust_store.load()
@@ -55,15 +53,15 @@ async def task(loop):
     client.certificate_validator = validator
 
     # Open file to save results
-    file_path = ".results_conn.txt"
+    file_path = "./results_conn.txt"
     with open(file_path, 'w') as file:
         for i in range(1000):
             timestamp = time.time()
             await client.connect()
             timestamp = time.time() - timestamp
             file.write(str(timestamp) + "\n")
-            print(i, timestamp, "\n")
-            client.disconnect()
+            print(i, timestamp)
+            await client.disconnect()
 
 def main():
     loop = asyncio.get_event_loop()
