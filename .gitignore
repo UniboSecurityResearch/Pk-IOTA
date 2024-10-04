@@ -167,3 +167,6 @@ stronghold.rs/
 
 # DS Store
 .DS_Store
+
+# IOTA virtualenv
+virtualenv/

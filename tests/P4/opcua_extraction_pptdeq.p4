@@ -136,6 +136,7 @@ parser MyParser(packet_in packet,
     bit<32> remaining;
 
     state start {
+       meta.isOPN = 0;
        transition parse_ethernet;
     }
     
@@ -196,6 +197,7 @@ parser MyParser(packet_in packet,
     }
 
     state parse_opcua_security_hdr1 {
+        meta.isOPN = 1;
         packet.extract(hdr.opcua_security_hdr1);
         transition parse_opcua_security_hdr2;
     }
@@ -351,8 +353,8 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-   register<bit<48>>(1000) packet_processing_time_array; //egress timestamp - ingress timestamp
-   register<bit<32>>(1000) packet_dequeuing_timedelta_array; //deq_timedelta
+   register<bit<48>>(2000) packet_processing_time_array; //egress timestamp - ingress timestamp
+   register<bit<32>>(2000) packet_dequeuing_timedelta_array; //deq_timedelta
     
     register<bit<48>>(1) timestamp_last_seen_packet;
     register<bit<32>>(1) last_saved_index;
@@ -365,7 +367,7 @@ control MyEgress(inout headers hdr,
         timestamp_last_seen_packet.read(last_time,     0);
 
         diff_time = standard_metadata.ingress_global_timestamp - last_time;
-        if (diff_time > (bit<48>)COLLECTION_TIMEDELTA) { //grab info everytime the window is hit
+        if (meta.isOPN == 1) { //grab info everytime the packet is an OPN request or response
             //retrieve index
             last_saved_index.read(current_index,     0);
             
@@ -379,7 +381,7 @@ control MyEgress(inout headers hdr,
 
             //update index
             last_saved_index.write(0,     current_index + 1);
-            if(current_index + 1 > 999){
+            if(current_index + 1 > 1999){
                 last_saved_index.write(0,     0);
             }
             
