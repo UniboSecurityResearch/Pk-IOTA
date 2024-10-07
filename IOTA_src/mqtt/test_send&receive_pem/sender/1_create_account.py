@@ -40,3 +40,4 @@ account.set_default_sync_options(
     SyncOptions(sync_only_most_basic_outputs=True))
 
 print(account.get_metadata())
+print(account.addresses())

@@ -25,7 +25,7 @@ else:
     exit()
 
 init_time = time.time()
-with open("test_pem_sender.txt", "a") as testfile:
+with open("test_pem_sender_USA.txt", "a") as testfile:
     init_txt = index + ' - ' + str(init_time) + ' - '
     testfile.write(init_txt)
 
@@ -43,7 +43,7 @@ wallet.set_stronghold_password(os.environ["STRONGHOLD_PASSWORD"])
 # have a storage deposit return, expiration or are nft/alias/foundry outputs.
 account.sync(SyncOptions(sync_only_most_basic_outputs=True))
 aftersync_time = time.time()
-with open("test_pem_sender.txt", "a") as testfile:
+with open("test_pem_sender_USA.txt", "a") as testfile:
     testfile.write(str(aftersync_time) + ' - ')
 
 addresses = account.addresses()
@@ -57,15 +57,14 @@ with open(cert_path, 'rb') as f:
 tag = '0x'+'certificato'.encode('utf-8').hex()
 data = '0x'+hex_data.decode('ascii')
 before_trans_time = time.time()
-with open("test_pem_sender.txt", "a") as testfile:
+with open("test_pem_sender_USA.txt", "a") as testfile:
     testfile.write(str(before_trans_time)+' - ')
 
-transaction=account.send(100000,"rms1qqvnuxck92uwvf2hjpr0m9m0rj565efvchcy0xj9u5w8cwprqealva8g48e",options={"taggedDataPayload": {"type": 5, "tag": tag, "data": data}})
+transaction=account.send(100000,"tst1qqv5avetndkxzgr3jtrswdtz5ze6mag20s0jdqvzk4fwezve8q9vkamkkx0",options={"taggedDataPayload": {"type": 5, "tag": tag, "data": data}})
 after_trans_time = time.time()
-with open("test_pem_sender.txt", "a") as testfile:
+with open("test_pem_sender_USA.txt", "a") as testfile:
     testfile.write(str(after_trans_time) + '\n')
 #print(f'Check your block on: {os.environ["EXPLORER_URL"]}/block/{transaction.blockId}')
 print('-----------------------------')
 print(f'[SENDER] Time for the transaction: {after_trans_time-before_trans_time:0.8f} seconds')
 print('-----------------------------')
-

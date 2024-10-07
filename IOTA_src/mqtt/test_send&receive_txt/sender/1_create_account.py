@@ -33,6 +33,7 @@ wallet.store_mnemonic(
     os.environ['MNEMONIC'])
 
 account = wallet.create_account('Giacomo')
+
 # Set sync_only_most_basic_outputs to True if not interested in outputs that are timelocked,
 # have a storage deposit return, expiration or are nft/alias/foundry outputs.
 account.set_default_sync_options(

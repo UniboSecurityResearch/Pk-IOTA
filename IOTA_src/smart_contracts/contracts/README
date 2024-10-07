@@ -1,0 +1,3 @@
+***** CONTRACTS *****
+
+This folder contains smart contracts that can be used to interact with the front end to use OCSP and the management of certificates via smart contracts. Use the last version for more stable performances.
