@@ -69,7 +69,7 @@ ax.tick_params(axis="x", labelsize=15)  # X-axis ticks
 ax.tick_params(axis="y", labelsize=15)  # Y-axis ticks
 
 # Add a title to the plot
-plt.title("Smart Contract", fontsize=22, pad=22)  # Increase title font size
+plt.title("MQTT", fontsize=22, pad=22)  # Increase title font size
 
 # Adjust layout to make space for y-axis labels and prevent clipping
 plt.subplots_adjust(left=0.18, right=0.87)  # Adjusted spacing on the left for labels
