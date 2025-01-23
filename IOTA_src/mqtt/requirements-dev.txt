@@ -6,3 +6,4 @@ python-dotenv>=1.0.0
 pydoc-markdown>=4.8.0
 dacite>=1.8.1
 iota-sdk>=1.1.0
+cryptography>=43.0
