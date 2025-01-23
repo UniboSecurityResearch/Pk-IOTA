@@ -1,0 +1,58 @@
+(*  With a mac
+    A -> B: m, h(k, m)
+*)
+
+free c: channel.
+
+type host.
+free A, B, C: host.
+
+free cAO: channel [private].
+free cBO: channel [private].
+
+fun H(bitstring, bitstring): bitstring.
+
+free k: bitstring [private].
+free m: bitstring [private].
+
+event begin(host, host, bitstring).
+event end(host, host, bitstring).
+query X: host, Y: host, Z: bitstring; event(end(X, Y, Z)) ==> event(begin(X, Y, Z)).
+
+event different(host, host, bitstring).
+event sent(host, host, bitstring).
+event received(host, host, bitstring).
+query X: host, Y: host, N: bitstring ; event(different(X, Y, N)) ==> (event(sent(X, Y, N)) && event(received(X, Y, N))).
+
+
+let oracle =
+    in(cAO, (X: host, Y: host, m1: bitstring));
+    in(cBO, (=X, =Y, m2: bitstring));
+    if m1 = m2 then 0 else event different(X, Y, m2).
+
+
+let alice =
+    in(c, (X: host, Y: host));
+    if X <> A && X <> B then 0 else
+
+    (* Role starting *)
+    new m: bitstring;
+    event sent(X, Y, m);
+    event begin(X, Y, m);
+    out(cAO, (X, Y, m));
+    out(c, (m, H(k, m))).
+
+
+let bob =
+    in(c, (X: host, Y: host));
+    if Y <> A && Y <> B then 0 else
+
+    (* Role starting *)
+    in(c, (x: bitstring, h: bitstring));
+    if h <> H(k, x) then 0 else
+    event received(X, Y, x);
+    out(cBO, (X, Y, x));
+    if X = A || X = B then event end(X, Y, x).
+
+
+process oracle | alice | bob

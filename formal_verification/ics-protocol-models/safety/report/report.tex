@@ -1,0 +1,77 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{xspace}
+
+\newcommand{\TODO}[1]{{\bf\color{red} TODO: #1}\xspace}
+\newcommand{\opcua}{OPC-UA\xspace}
+\newcommand{\modbus}{MODBUS\xspace}
+\newcommand{\assi}{PEPS/CNRS ASSI\xspace}
+\newcommand{\sis}{systèmes industriels\xspace}
+\newcommand{\safety}{sûreté\xspace}
+\newcommand{\proverif}{ProVerif\xspace}
+\newcommand{\tamarin}{Tamarin\xspace}
+
+\title{
+    Rapport d'expérimentation des propriétés de \safety avec les outils de
+    vérification de protocoles
+}
+\author{
+    Maxime Puys \\
+    VERIMAG, Université Grenoble Alpes \\
+    prenom.nom@univ-grenoble-alpes.fr
+}
+
+\begin{document}
+
+\maketitle
+
+%------------------------------------------------------------
+\section{Introduction}\label{sec:intro}
+
+Ce document a pour but de présenter un compte rendu des expérimentations menées
+dans le cadre du projet \assi afin de vérifier des propriétés de
+\safety via des outils de vérifications de protocoles cryptographiques.
+L'objectif est de proposer une méthode d'analyse de propriétés de \safety en
+présence d'attaquants malicieux.
+Dans l'écosystème actuel des outils, on distingue d'une part les outils de
+vérification de protocoles cryptographiques qui codent en dur un attaquant
+Dolev-Yao.
+Ces outils se focalisent généralement sur des propriétés de sécurité telles que
+le secret, l'authentification ou plus recement l'équivalence observationnelle.
+Cependant, les outils les plus récents adoptent une expressivité rendant
+possible la vérification de propriétés de \safety.
+
+%------------------------------------------------------------
+\section{Différences entre les protocoles cryptographiques et les \sis}\label{sec:diff}
+
+\TODO{Définir systèmes indus par rapport aux protocoles crypto (états,
+sessions, terminaison, propriétés, nb messages, etc).}
+
+%------------------------------------------------------------
+\section{Expérimentations}\label{sec:exp}
+
+\TODO{Définir exemple bouteilles, voir annexe}
+
+\noindent\TODO{Le formaliser en s'aidant des modélisations \proverif et \tamarin}.
+
+L'exemple consiste d'un client, un serveur un procédé.
+Le procédé est constitué de variables et d'un automate caractérisant les
+interactions entre ces variables.
+
+
+
+Un premier canal relie le client au serveur et un second canal relie le serveur
+au procédé.
+Le client, le serveur et le procédé sont des automates.
+Chaque transition de ces automates est un processus.
+
+%------------------------------
+\subsection{\proverif}\label{sec:exp_proverif}
+
+En \proverif, 
+
+\end{document}

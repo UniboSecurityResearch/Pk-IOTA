@@ -1,0 +1,116 @@
+theory Bottle_Factory
+begin
+
+
+/*
+ * Protocol: Botte factory
+ * Modeler: Jannik Dreier
+ * Date: Novembre 2016	
+ * Source: -
+ * Status: WiP
+ */
+
+functions: idle/0, running/0, moving/0, pouring/0, true/0, false/0, motor/0, nozzle/0, bottle/0, level/0, write/0, read/0
+
+// Initialization
+
+rule Init:
+  [ Fr(~c), Fr(~s), Fr(~p) ]
+  --[ OnlyOnce() ]->
+  [ Client(~c,idle,false,false,false,false,false), 
+// Client: State, Run, BottleInPlace, Level, Motor, Nozzle
+    Server(~s,idle,false,false,false,false,false), 
+// Server: State, Run, BottleInPlace, Level, Motor, Nozzle
+    Process(~p,false, false, false, false)
+// Physical process: Motor, Nozzle, BottleInPlace, Level
+  ]
+
+// Server
+
+// Automaton rules
+
+rule S_start:
+    [ Server(~s,idle,s_run,s_bottle,s_level,s_motor,s_nozzle), In(<write,run,true>) ]
+  --[ ServerState(~s) ]->
+    [ Server(~s,moving,true,s_bottle,s_level,true,s_nozzle), In_P(<write,motor,true>) ]
+
+rule S_fill:
+    [ Server(~s,moving,s_run,s_bottle,s_level,s_motor,s_nozzle), Out_P(<write,bottle,true>) ]
+  --[ ServerState(~s) ]->
+    [ Server(~s,pouring,s_run,true,s_level,false,true), In_P(<write,motor,false>), In_P(<write,nozzle,true>) ]
+
+rule S_move:
+    [ Server(~s,pouring,s_run,s_bottle,s_level,s_motor,s_nozzle), Out_P(<write,level,true>) ]
+  --[ ServerState(~s) ]->
+    [ Server(~s,moving,s_run,s_bottle,true,true,false), In_P(<write,motor,true>), In_P(<write,nozzle,false>) ]
+
+rule S_stop:
+    [ Server(~s,pouring,s_run,s_bottle,s_level,s_motor,s_nozzle), In(<write,run,false>) ]
+  --[ ServerState(~s) ]->
+    [ Server(~s,idle,false,s_bottle,level,false,false), In_P(<write,motor,false>), In_P(<write,nozzle,false>) ]
+
+rule S_stop_2:
+    [ Server(~s,moving,s_run,s_bottle,s_level,s_motor,s_nozzle), In(<write,run,false>) ]
+  --[ ServerState(~s) ]->
+    [ Server(~s,idle,false,s_bottle,s_level,false,false), In_P(<write,motor,false>), In_P(<write,nozzle,false>) ]
+
+// Process
+
+// Automaton rules
+
+rule P_stop_motor:
+    [ Process(~p,s_motor,s_nozzle,s_bottle,s_level), In_P(<write,motor,false>) ]
+  --[ ProcessState(~p,false,s_nozzle,s_bottle,s_level) ]->
+    [ Process(~p,false,s_nozzle,s_bottle,s_level) ]
+
+rule P_stop_nozzle:
+    [ Process(~p,s_motor,s_nozzle,s_bottle,s_level), In_P(<write,nozzle,false>) ]
+  --[ ProcessState(~p,s_motor,false,s_bottle,s_level) ]->
+    [ Process(~p,s_motor,false,s_bottle,s_level) ]
+
+rule P_fill:
+    [ Process(~p,s_motor,s_nozzle,true,s_level), In_P(<write,nozzle,true>) ]
+  --[ ProcessState(~p,s_motor,s_nozzle,true,true) ]->
+    [ Process(~p,s_motor,true,true,true), Out_P(<write,level,true>) ]
+
+rule P_start_motor:
+    [ Process(~p,s_motor,s_nozzle,s_bottle,s_level), In_P(<write,motor,true>) ]
+  --[ ProcessState(~p,true,s_nozzle,false,false) ]->
+    [ Process(~p,true,s_nozzle,false,false) ]
+
+rule P_in_place:
+    [ Process(~p,true,s_nozzle,false,s_level) ]
+  --[ ProcessState(~p,true,s_nozzle,true,s_level) ]->
+    [ Process(~p,true,s_nozzle,true,s_level), Out_P(<write,bottle,true>) ]
+
+// Axioms
+
+axiom OnlyOnceEx:
+  " Ex #i. OnlyOnce()@i " 
+
+axiom OnlyOnce:
+  " All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j " 
+
+axiom OnlyOneServer:
+  " All s k #i #j. ServerState(s)@i & ServerState(k)@j ==> s = k " 
+
+axiom OnlyOneProcess:
+  " All p p1 m m1 n n1 b b1 l l1 #i #j. ProcessState(p,m,n,b,l)@i & ProcessState(p1,m1,n1,b1,l1)@j ==> p = p1 " 
+
+axiom OnlyOneProcess2:
+  " All p p1 m m1 n n1 b b1 l l1 #i #j. ProcessState(p,m,n,b,l)@#i & ProcessState(p1,m1,n1,b1,l1)@#j & p = p1 & m = m1 & n = n1 & b = b1 & l = l1 ==> #i = #j" 
+
+axiom LimitedProcess:
+  " All p p1 m m1 n n1 b b1 l l1 p2 p3 m2 m3 n2 n3 b2 b3 l2 l3 #i #j #k #i1. ((ProcessState(p,m,n,b,l)@i & ProcessState(p1,m1,n1,b1,l1)@j & ProcessState(p2,m2,n2,b2,l2)@k & ProcessState(p3,m3,n3,b3,l3)@i1) ==> (#i = #j | #j = #k | #k = #i1 | #i = #k | #i = #i1 | #j = #i1))"
+
+// Executability
+
+lemma safety:
+  all-traces
+  " All p s_motor s_bottle s_level #i. (ProcessState(p, s_motor, true, s_bottle, s_level) @ i ==> (s_motor=false & s_bottle=true & s_level=false))"
+// State: Motor, Nozzle, BottleInPlace, Level
+
+
+
+end
+

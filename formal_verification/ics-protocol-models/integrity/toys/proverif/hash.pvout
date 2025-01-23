@@ -1,0 +1,149 @@
+File "hash.pv", line 38, character 9 - line 38, character 10:
+Warning: identifier m rebound
+Process:
+(
+    {1}in(cAO, (X: host,Y: host,m1: bitstring));
+    {2}in(cBO, (=X,=Y,m2: bitstring));
+    {3}if (m1 = m2) then
+        0
+    else
+        {4}event different(X,Y,m2)
+) | (
+    {5}in(c, (X_22: host,Y_23: host));
+    {6}if ((X_22 <> A) && (X_22 <> B)) then
+        0
+    else
+        {7}new m_24: bitstring;
+        {8}event sent(X_22,Y_23,m_24);
+        {9}event begin(X_22,Y_23,m_24);
+        {10}out(cAO, (X_22,Y_23,m_24));
+        {11}out(c, (m_24,H(m_24)))
+) | (
+    {12}in(c, (X_25: host,Y_26: host));
+    {13}if ((Y_26 <> A) && (Y_26 <> B)) then
+        0
+    else
+        {14}in(c, (x: bitstring,h: bitstring));
+        {15}if (h <> H(x)) then
+            0
+        else
+            {16}event received(X_25,Y_26,x);
+            {17}out(cBO, (X_25,Y_26,x));
+            {18}if ((X_25 = A) || (X_25 = B)) then
+            {19}event end(X_25,Y_26,x)
+)
+
+-- Query event(different(X_27,Y_28,N)) ==> (event(sent(X_27,Y_28,N)) && event(received(X_27,Y_28,N)))
+Completing...
+Starting query event(different(X_27,Y_28,N)) ==> (event(sent(X_27,Y_28,N)) && event(received(X_27,Y_28,N)))
+goal reachable: N_834 <> m_24[Y_23 = B[],X_22 = A[]] && begin(received(A[],B[],N_834)) && attacker(N_834) && begin(sent(A[],B[],m_24[Y_23 = B[],X_22 = A[]])) -> end(different(A[],B[],N_834))
+Abbreviations:
+m_858 = m_24[Y_23 = B[],X_22 = A[]]
+
+1. The attacker initially knows B[].
+attacker(B[]).
+
+2. The attacker initially knows A[].
+attacker(A[]).
+
+3. By 2, the attacker may know A[].
+By 1, the attacker may know B[].
+Using the function 2-tuple the attacker may obtain (A[],B[]).
+attacker((A[],B[])).
+
+4. The message (A[],B[]) that the attacker may have by 3 may be received at input {5}.
+The event sent(A[],B[],m_858) may be executed at {8}.
+So the message (A[],B[],m_858) may be sent on channel cAO[] at output {10}.
+mess(cAO[],(A[],B[],m_858)).
+
+5. We assume as hypothesis that
+attacker(N_857).
+
+6. By 5, the attacker may know N_857.
+Using the function H the attacker may obtain H(N_857).
+attacker(H(N_857)).
+
+7. By 5, the attacker may know N_857.
+By 6, the attacker may know H(N_857).
+Using the function 2-tuple the attacker may obtain (N_857,H(N_857)).
+attacker((N_857,H(N_857))).
+
+8. The message (A[],B[]) that the attacker may have by 3 may be received at input {12}.
+The message (N_857,H(N_857)) that the attacker may have by 7 may be received at input {14}.
+The event received(A[],B[],N_857) may be executed at {16}.
+So the message (A[],B[],N_857) may be sent on channel cBO[] at output {17}.
+mess(cBO[],(A[],B[],N_857)).
+
+9. The message (A[],B[],m_858) that may be sent on channel cAO[] by 4 may be received at input {1}.
+The message (A[],B[],N_857) that may be sent on channel cBO[] by 8 may be received at input {2}.
+We have m_858 <> N_857.
+So event different(A[],B[],N_857) may be executed at {4}.
+end(different(A[],B[],N_857)).
+
+
+A more detailed output of the traces is available with
+  set traceDisplay = long.
+
+in(c, (A,B)) at {5}
+
+new m_24 creating m_859 at {7}
+
+event(sent(A,B,m_859)) at {8}
+
+event(begin(A,B,m_859)) at {9}
+
+out(cAO, (A,B,m_859)) at {10} received at {1}
+
+out(c, (m_859,H(m_859))) at {11}
+
+in(c, (A,B)) at {12}
+
+in(c, (a,H(a))) at {14}
+
+event(received(A,B,a)) at {16}
+
+out(cBO, (A,B,a)) at {17} received at {2}
+
+event(end(A,B,a)) at {19}
+
+event(different(A,B,a)) at {4}
+
+The event different(A,B,a) is executed.
+A trace has been found.
+RESULT event(different(X_27,Y_28,N)) ==> (event(sent(X_27,Y_28,N)) && event(received(X_27,Y_28,N))) is false.
+-- Query event(end(X_901,Y_902,Z)) ==> event(begin(X_901,Y_902,Z))
+Completing...
+Starting query event(end(X_901,Y_902,Z)) ==> event(begin(X_901,Y_902,Z))
+goal reachable: attacker(Z_1661) -> end(end(A[],B[],Z_1661))
+
+1. The attacker initially knows B[].
+attacker(B[]).
+
+2. The attacker initially knows A[].
+attacker(A[]).
+
+3. By 2, the attacker may know A[].
+By 1, the attacker may know B[].
+Using the function 2-tuple the attacker may obtain (A[],B[]).
+attacker((A[],B[])).
+
+4. We assume as hypothesis that
+attacker(Z_1676).
+
+5. By 4, the attacker may know Z_1676.
+Using the function H the attacker may obtain H(Z_1676).
+attacker(H(Z_1676)).
+
+6. By 4, the attacker may know Z_1676.
+By 5, the attacker may know H(Z_1676).
+Using the function 2-tuple the attacker may obtain (Z_1676,H(Z_1676)).
+attacker((Z_1676,H(Z_1676))).
+
+7. The message (A[],B[]) that the attacker may have by 3 may be received at input {12}.
+The message (Z_1676,H(Z_1676)) that the attacker may have by 6 may be received at input {14}.
+So event end(A[],B[],Z_1676) may be executed at {19}.
+end(end(A[],B[],Z_1676)).
+
+
+Could not find a trace corresponding to this derivation.
+RESULT event(end(X_901,Y_902,Z)) ==> event(begin(X_901,Y_902,Z)) cannot be proved.

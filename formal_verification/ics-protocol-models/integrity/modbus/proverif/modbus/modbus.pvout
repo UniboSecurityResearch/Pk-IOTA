@@ -1,0 +1,159 @@
+Process:
+(
+    {1}in(cAO, (A: host,B: host,m1: bitstring));
+    {2}in(cBO, (=A,=B,m2: bitstring));
+    {3}if (m1 = m2) then
+        0
+    else
+        {4}event different(A,B,m2)
+) | (
+    {5}in(c, (A_22: host,B_23: host));
+    {6}if ((A_22 <> Alice) && (A_22 <> Bob)) then
+        0
+    else
+        {7}event begin(A_22,B_23,m);
+        {8}out(cAO, (A_22,B_23,m));
+        {9}out(c, m)
+) | (
+    {10}in(c, (A_24: host,B_25: host));
+    {11}if ((B_25 <> Alice) && (B_25 <> Bob)) then
+        0
+    else
+        {12}in(c, x: bitstring);
+        {13}event end(A_24,B_25,x);
+        {14}out(cBO, (A_24,B_25,x))
+)
+
+-- Query event(different(a,b,x_26)) ==> (event(end(a,b,x_26)) && event(begin(a,b,x_26)))
+Completing...
+Starting query event(different(a,b,x_26)) ==> (event(end(a,b,x_26)) && event(begin(a,b,x_26)))
+goal reachable: x_563 <> m[] && begin(end(Alice[],Bob[],x_563)) && attacker(x_563) && begin(begin(Alice[],Bob[],m[])) -> end(different(Alice[],Bob[],x_563))
+
+1. The attacker initially knows Bob[].
+attacker(Bob[]).
+
+2. The attacker initially knows Alice[].
+attacker(Alice[]).
+
+3. By 2, the attacker may know Alice[].
+By 1, the attacker may know Bob[].
+Using the function 2-tuple the attacker may obtain (Alice[],Bob[]).
+attacker((Alice[],Bob[])).
+
+4. The message (Alice[],Bob[]) that the attacker may have by 3 may be received at input {5}.
+The event begin(Alice[],Bob[],m[]) may be executed at {7}.
+So the message (Alice[],Bob[],m[]) may be sent on channel cAO[] at output {8}.
+mess(cAO[],(Alice[],Bob[],m[])).
+
+5. We assume as hypothesis that
+attacker(x_583).
+
+6. The message (Alice[],Bob[]) that the attacker may have by 3 may be received at input {10}.
+The message x_583 that the attacker may have by 5 may be received at input {12}.
+The event end(Alice[],Bob[],x_583) may be executed at {13}.
+So the message (Alice[],Bob[],x_583) may be sent on channel cBO[] at output {14}.
+mess(cBO[],(Alice[],Bob[],x_583)).
+
+7. The message (Alice[],Bob[],m[]) that may be sent on channel cAO[] by 4 may be received at input {1}.
+The message (Alice[],Bob[],x_583) that may be sent on channel cBO[] by 6 may be received at input {2}.
+We have m[] <> x_583.
+So event different(Alice[],Bob[],x_583) may be executed at {4}.
+end(different(Alice[],Bob[],x_583)).
+
+
+A more detailed output of the traces is available with
+  set traceDisplay = long.
+
+in(c, (Alice,Bob)) at {5}
+
+event(begin(Alice,Bob,m)) at {7}
+
+out(cAO, (Alice,Bob,m)) at {8} received at {1}
+
+out(c, m) at {9}
+
+in(c, (Alice,Bob)) at {10}
+
+in(c, a_584) at {12}
+
+event(end(Alice,Bob,a_584)) at {13}
+
+out(cBO, (Alice,Bob,a_584)) at {14} received at {2}
+
+event(different(Alice,Bob,a_584)) at {4}
+
+The event different(Alice,Bob,a_584) is executed.
+A trace has been found.
+RESULT event(different(a,b,x_26)) ==> (event(end(a,b,x_26)) && event(begin(a,b,x_26))) is false.
+-- Query event(end(a_617,b_618,x_619)) ==> event(begin(a_617,b_618,x_619))
+Completing...
+Starting query event(end(a_617,b_618,x_619)) ==> event(begin(a_617,b_618,x_619))
+goal reachable: attacker(x_1073) && attacker(a_1074) -> end(end(a_1074,Bob[],x_1073))
+
+1. The attacker initially knows Bob[].
+attacker(Bob[]).
+
+2. We assume as hypothesis that
+attacker(a_1084).
+
+3. By 2, the attacker may know a_1084.
+By 1, the attacker may know Bob[].
+Using the function 2-tuple the attacker may obtain (a_1084,Bob[]).
+attacker((a_1084,Bob[])).
+
+4. We assume as hypothesis that
+attacker(x_1086).
+
+5. The message (a_1084,Bob[]) that the attacker may have by 3 may be received at input {10}.
+The message x_1086 that the attacker may have by 4 may be received at input {12}.
+So event end(a_1084,Bob[],x_1086) may be executed at {13}.
+end(end(a_1084,Bob[],x_1086)).
+
+
+A more detailed output of the traces is available with
+  set traceDisplay = long.
+
+in(c, (a_1087,Bob)) at {10}
+
+in(c, a_1088) at {12}
+
+event(end(a_1087,Bob,a_1088)) at {13}
+
+The event end(a_1087,Bob,a_1088) is executed.
+A trace has been found.
+RESULT event(end(a_617,b_618,x_619)) ==> event(begin(a_617,b_618,x_619)) is false.
+-- Query not attacker(m[])
+Completing...
+Starting query not attacker(m[])
+goal reachable: attacker(m[])
+
+1. The attacker has some term B_1492.
+attacker(B_1492).
+
+2. The attacker initially knows Alice[].
+attacker(Alice[]).
+
+3. By 2, the attacker may know Alice[].
+By 1, the attacker may know B_1492.
+Using the function 2-tuple the attacker may obtain (Alice[],B_1492).
+attacker((Alice[],B_1492)).
+
+4. The message (Alice[],B_1492) that the attacker may have by 3 may be received at input {5}.
+So the message m[] may be sent to the attacker at output {9}.
+attacker(m[]).
+
+
+A more detailed output of the traces is available with
+  set traceDisplay = long.
+
+in(c, (Alice,a_1493)) at {5}
+
+event(begin(Alice,a_1493,m)) at {7}
+
+out(cAO, (Alice,a_1493,m)) at {8} received at {1}
+
+out(c, m) at {9}
+
+The attacker has the message m.
+A trace has been found.
+RESULT not attacker(m[]) is false.

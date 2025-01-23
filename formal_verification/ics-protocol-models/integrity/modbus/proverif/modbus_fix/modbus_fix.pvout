@@ -1,0 +1,156 @@
+File "modbus_fix.pv", line 50, character 9 - line 50, character 11:
+Warning: identifier sk rebound
+Process:
+{1}let pkA: key = pub(skA) in
+{2}out(c, pkA);
+{3}let pkB: key = pub(skB) in
+{4}out(c, pkB);
+(
+    {5}in(cAO, (A: host,B: host,m1: bitstring));
+    {6}in(cBO, (=A,=B,m2: bitstring));
+    {7}if (m1 = m2) then
+        0
+    else
+        {8}event different(A,B,m2)
+) | (
+    {9}in(c, (A_45: host,B_46: host));
+    {10}if ((A_45 <> Alice) && (A_45 <> Bob)) then
+        0
+    else
+        {11}let sk_47: key = (if (A_45 = Alice) then skA else (if (A_45 = Bob) then skB else fail-any)) in
+        {12}event begin(A_45,B_46,m);
+        {13}out(cAO, (A_45,B_46,m));
+        {14}out(c, (m,sign(m,sk_47)))
+) | (
+    {15}in(c, (A_48: host,B_49: host));
+    {16}if ((B_49 <> Alice) && (B_49 <> Bob)) then
+        0
+    else
+        {17}let pk: key = (if (A_48 = Alice) then pkA else (if (A_48 = Bob) then pkB else pub(sk(A_48)))) in
+        {18}in(c, (x_50: bitstring,sigX: bitstring));
+        {19}if (verify(x_50,sigX,pk) <> true) then
+            0
+        else
+            {20}event end(A_48,B_49,x_50);
+            {21}out(cBO, (A_48,B_49,x_50))
+)
+
+-- Query event(different(a,b,x_51)) ==> (event(end(a,b,x_51)) && event(begin(a,b,x_51)))
+Completing...
+Starting query event(different(a,b,x_51)) ==> (event(end(a,b,x_51)) && event(begin(a,b,x_51)))
+RESULT event(different(a,b,x_51)) ==> (event(end(a,b,x_51)) && event(begin(a,b,x_51))) is true.
+-- Query event(end(a_1675,b_1676,x_1677)) ==> event(begin(a_1675,b_1676,x_1677))
+Completing...
+Starting query event(end(a_1675,b_1676,x_1677)) ==> event(begin(a_1675,b_1676,x_1677))
+goal reachable: begin(begin(Bob[],B_3331,m[])) && attacker(B_3331) -> end(end(Bob[],Alice[],m[]))
+
+1. The attacker initially knows Alice[].
+attacker(Alice[]).
+
+2. The attacker initially knows Bob[].
+attacker(Bob[]).
+
+3. By 2, the attacker may know Bob[].
+By 1, the attacker may know Alice[].
+Using the function 2-tuple the attacker may obtain (Bob[],Alice[]).
+attacker((Bob[],Alice[])).
+
+4. We assume as hypothesis that
+attacker(B_3353).
+
+5. By 2, the attacker may know Bob[].
+By 4, the attacker may know B_3353.
+Using the function 2-tuple the attacker may obtain (Bob[],B_3353).
+attacker((Bob[],B_3353)).
+
+6. The message (Bob[],B_3353) that the attacker may have by 5 may be received at input {9}.
+The event begin(Bob[],B_3353,m[]) may be executed at {12}.
+So the message (m[],sign(m[],skB[])) may be sent to the attacker at output {14}.
+attacker((m[],sign(m[],skB[]))).
+
+7. By 6, the attacker may know (m[],sign(m[],skB[])).
+Using the function 2-proj-2-tuple the attacker may obtain sign(m[],skB[]).
+attacker(sign(m[],skB[])).
+
+8. By 6, the attacker may know (m[],sign(m[],skB[])).
+Using the function 1-proj-2-tuple the attacker may obtain m[].
+attacker(m[]).
+
+9. By 8, the attacker may know m[].
+By 7, the attacker may know sign(m[],skB[]).
+Using the function 2-tuple the attacker may obtain (m[],sign(m[],skB[])).
+attacker((m[],sign(m[],skB[]))).
+
+10. The message (Bob[],Alice[]) that the attacker may have by 3 may be received at input {15}.
+The message (m[],sign(m[],skB[])) that the attacker may have by 9 may be received at input {18}.
+So event end(Bob[],Alice[],m[]) may be executed at {20}.
+end(end(Bob[],Alice[],m[])).
+
+
+A more detailed output of the traces is available with
+  set traceDisplay = long.
+
+out(c, pub(skA)) at {2}
+
+out(c, pub(skB)) at {4}
+
+in(c, (Bob,a_3364)) at {9}
+
+event(begin(Bob,a_3364,m)) at {12}
+
+out(cAO, (Bob,a_3364,m)) at {13} received at {5}
+
+out(c, (m,sign(m,skB))) at {14}
+
+in(c, (Bob,Alice)) at {15}
+
+in(c, (m,sign(m,skB))) at {18}
+
+event(end(Bob,Alice,m)) at {20}
+
+The event end(Bob,Alice,m) is executed.
+A trace has been found.
+RESULT event(end(a_1675,b_1676,x_1677)) ==> event(begin(a_1675,b_1676,x_1677)) is false.
+-- Query not attacker(m[])
+Completing...
+Starting query not attacker(m[])
+goal reachable: attacker(m[])
+
+1. The attacker has some term B_4796.
+attacker(B_4796).
+
+2. The attacker initially knows Alice[].
+attacker(Alice[]).
+
+3. By 2, the attacker may know Alice[].
+By 1, the attacker may know B_4796.
+Using the function 2-tuple the attacker may obtain (Alice[],B_4796).
+attacker((Alice[],B_4796)).
+
+4. The message (Alice[],B_4796) that the attacker may have by 3 may be received at input {9}.
+So the message (m[],sign(m[],skA[])) may be sent to the attacker at output {14}.
+attacker((m[],sign(m[],skA[]))).
+
+5. By 4, the attacker may know (m[],sign(m[],skA[])).
+Using the function 1-proj-2-tuple the attacker may obtain m[].
+attacker(m[]).
+
+
+A more detailed output of the traces is available with
+  set traceDisplay = long.
+
+out(c, pub(skA)) at {2}
+
+out(c, pub(skB)) at {4}
+
+in(c, (Alice,a_4799)) at {9}
+
+event(begin(Alice,a_4799,m)) at {12}
+
+out(cAO, (Alice,a_4799,m)) at {13} received at {5}
+
+out(c, (m,sign(m,skA))) at {14}
+
+The attacker has the message m.
+A trace has been found.
+RESULT not attacker(m[]) is false.

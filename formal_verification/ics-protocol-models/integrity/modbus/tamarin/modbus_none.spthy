@@ -1,0 +1,91 @@
+theory Modbus_None
+begin
+
+section{* Modbus_None *}
+
+/*
+ * Protocol:    Modbus without crypto
+ * Modeler:     Jannik Dreier, Maxime Puys and Pascal Lafourcade      
+ * Date:        6 September 2016
+ * Status:      Working (insecure)
+ */
+
+// [n|message]
+
+builtins: multiset
+
+rule Send_A:
+    let message = <n, $PH, ~m>
+    in
+    [ Fr(~m), In(n) ]
+    --[ Sent($A, $B, ~m), Seq_Sent($A, $B, n), Ch_Sent(message) ]->
+    [ Out(message) ]
+
+rule Recv_B:
+    let message = <n, PH, m>
+    in
+    [ In(message) ]
+    --[ Received($A, $B, m), Seq_Received($A, $B, n), Ch_Received(message) ]->
+    [  ]
+
+// AXIOMS
+
+// A's counter increases
+restriction A_Counter_Increases:
+    "All A B seq1 seq2 #i #j.(Seq_Sent(A, B, seq1) @ #i & Seq_Sent(A, B, seq2) @ #j & #i < #j ==> Ex dif. seq2 = seq1 + dif )"
+
+// B's counter counter increases
+restriction B_Counter_Counter_Increases:
+    "All A B seq1 seq2 #i #j.(Seq_Received(A, B, seq1) @ #i & Seq_Received(A, B, seq2) @ #j & #i < #j ==> Ex dif. seq2 = seq1 + dif )"
+
+// LEMMAS
+
+// The protocol is executable.
+lemma Executable:
+    exists-trace
+    "Ex A B m #i. Received(A, B, m) @ #i"
+
+
+// Non-Injective Message Authenticity
+lemma NIMA:
+    all-traces
+    "All A B m #i.(Received(A,B,m) @ #i ==> (Ex #k. Sent(A,B,m) @ #k))"
+
+
+// Injective Message Authenticity
+lemma IMA:
+    "All A B t #i. 
+    Received(A,B,t) @i
+    ==> (Ex #j. Sent(A,B,t) @j 
+        & j < i
+        & not (Ex A2 B2 #i2. Received(A2,B2,t) @i2
+                           & not (#i2 = #i)))"
+
+// Flow Authenticity
+lemma FA:
+    all-traces
+    "All A B m m2 #i #j.(Received(A,B,m) @ #i & Received(A,B,m2) @ #j & #i < #j ==> (Ex #k #l. (Sent(A,B,m) @ #k & Sent(A,B,m2) @ #l & #k < #l) ))"
+
+
+// Non-Injective Message Delivery
+lemma NIMD:
+    all-traces
+    "(All A B m #i.(Sent(A,B,m) @ #i ==> (Ex #k. Received(A,B,m) @ #k)))"
+
+// Injective Message Delivery
+lemma IMD:
+    "(All A B t #i. 
+      Sent(A,B,t) @i
+      ==> (Ex #j. Received(A,B,t) @j 
+          & i < j
+          & not (Ex A2 B2 #i2. Sent(A2,B2,t) @i2
+                             & not (#i2 = #i)))
+    )"
+
+// Flow Delivery
+lemma FD:
+    all-traces
+    "(All A B m m2 #i #j.(Sent(A,B,m) @ #i & Sent(A,B,m2) @ #j & #i < #j ==> (Ex #k #l. (Received(A,B,m) @ #k & Received(A,B,m2) @ #l & #k < #l) )))"
+
+
+end

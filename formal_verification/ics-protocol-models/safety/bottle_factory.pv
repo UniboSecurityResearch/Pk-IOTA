@@ -1,0 +1,137 @@
+free c_cliSrv: channel.
+free c_srvProc: channel [private].
+
+free cell_srv, cread_srv, cwrite_srv: channel [private].
+free cell_proc, cread_proc, cwrite_proc: channel [private].
+
+type state.
+type operation.
+type variable.
+
+const IDDLE, MOVING, POURING: state.
+const READ, WRITE: operation.
+const MOTOR, NOZZLE, LEVEL, BOTTLE, RUN: variable.
+
+event badProcess.
+query event(badProcess).
+
+(* Client *)
+let client =
+    out(c_cliSrv, (WRITE, RUN, true)).
+
+(* Server *)
+let S_startMoving =
+    in(cread_srv, (=IDDLE, (run: bool, =false, level: bool, motor: bool, nozzle: bool)));
+    in(c_cliSrv, (=WRITE, =RUN, =true));
+    out(cwrite_srv, (MOVING, (true, false, level, true, nozzle)));
+    out(c_srvProc, (WRITE, MOTOR, true)).
+
+let S_stopMoving =
+    in(cread_srv, (=MOVING, (run: bool, bottle: bool, level: bool, motor: bool, nozzle: bool)));
+    in(c_cliSrv, (=WRITE, =RUN, =false));
+    out(cwrite_srv, (IDDLE, (false, bottle, level, false, false)));
+    out(c_srvProc, (WRITE, NOZZLE, false));
+    out(c_srvProc, (WRITE, MOTOR, false)).
+
+let S_startPouring =
+    in(cread_srv, (=IDDLE, (run: bool, =true, level: bool, motor: bool, nozzle: bool)));
+    in(c_cliSrv, (=WRITE, =RUN, =true));
+    out(cwrite_srv, (POURING, (true, true, level, motor, true)));
+    out(c_srvProc, (WRITE, NOZZLE, true)).
+
+let S_stopPouring =
+    in(cread_srv, (=POURING, (run: bool, bottle: bool, level: bool, motor: bool, nozzle: bool)));
+    in(c_cliSrv, (=WRITE, =RUN, =false));
+    out(cwrite_srv, (IDDLE, (false, bottle, level, false, false)));
+    out(c_srvProc, (WRITE, NOZZLE, false));
+    out(c_srvProc, (WRITE, MOTOR, false)).
+
+let S_fill =
+    in(cread_srv, (=MOVING, (run: bool, bottle: bool, level: bool, motor: bool, nozzle: bool)));
+    in(c_srvProc, (=WRITE, =BOTTLE, =true));
+    out(cwrite_srv, (POURING, (run, true, level, false, true)));
+    out(c_srvProc, (WRITE, MOTOR, false));
+    out(c_srvProc, (WRITE, NOZZLE, true)).
+
+let S_move =
+    in(cread_srv, (=POURING, (run: bool, bottle: bool, level: bool, motor: bool, nozzle: bool)));
+    in(c_srvProc, (=WRITE, =LEVEL, =true));
+    out(cwrite_srv, (MOVING, (run, false, false, true, false)));
+    out(c_srvProc, (WRITE, NOZZLE, false));
+    out(c_srvProc, (WRITE, MOTOR, true)).
+
+(* Process *)
+let P_startMoving =
+    in(cread_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+    in(c_srvProc, (=WRITE, =MOTOR, =true));
+    out(cwrite_proc, (false, level, true, nozzle)).
+
+let P_stopMoving =
+    in(cread_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+    in(c_srvProc, (=WRITE, =MOTOR, =false));
+    out(cwrite_proc, (bottle, level, false, nozzle)).
+
+let P_startPouring =
+    in(cread_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+    in(c_srvProc, (=WRITE, =NOZZLE, =true));
+    out(cwrite_proc, (bottle, level, motor, true)).
+
+let P_stopPouring =
+    in(cread_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+    in(c_srvProc, (=WRITE, =NOZZLE, =false));
+    out(cwrite_proc, (bottle, false, motor, false)).
+
+let P_fill =
+    in(cread_proc, (=true, level: bool, motor: bool, =true));
+    out(cwrite_proc, (true, true, motor, true));
+    out(c_srvProc, (WRITE, LEVEL, true)).
+
+let P_move =
+    in(cread_proc, (bottle: bool, level: bool, =true, nozzle: bool));
+    out(cwrite_proc, (true, level, true, nozzle));
+    out(c_srvProc, (WRITE, BOTTLE, true)).
+
+(* Oracle *)
+let oracle =
+    in(cread_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+    if nozzle = true then
+        if motor = true || bottle = false || level = true then
+            event badProcess.
+
+
+process
+    (
+        out(cell_srv, (IDDLE, (false, false, false, false, false))) | (
+            !in(cell_srv, (s: state, (run: bool, bottle: bool, level: bool, motor: bool, nozzle: bool)));
+            in(cwrite_srv, (s2: state, (run2: bool, bottle2: bool, level2: bool, motor2: bool, nozzle2: bool)));
+            out(cell_srv, (s2, (run2, bottle2, level2, motor2, nozzle2)))
+        ) | (
+            !in(cell_srv, (s: state, (run: bool, bottle: bool, level: bool, motor: bool, nozzle: bool)));
+            out(cread_srv, (s, (run, bottle, level, motor, nozzle)));
+            out(cell_srv, (s, (run, bottle, level, motor, nozzle)))
+        )
+    ) | (
+        out(cell_proc, (false, false, false, false)) | (
+            !in(cell_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+            in(cwrite_proc, (bottle2: bool, level2: bool, motor2: bool, nozzle2: bool));
+            out(cell_proc, (bottle2, level2, motor2, nozzle2))
+        ) | (
+            !in(cell_proc, (bottle: bool, level: bool, motor: bool, nozzle: bool));
+            out(cread_proc, (bottle, level, motor, nozzle));
+            out(cell_proc, (bottle, level, motor, nozzle))
+        )
+    ) | !client | (
+        !S_startMoving |
+        !S_stopMoving |
+        !S_startPouring |
+        !S_stopPouring |
+        !S_fill |
+        !S_move
+    ) | (
+        !P_startMoving |
+        !P_stopMoving |
+        !P_startPouring |
+        !P_stopPouring |
+        !P_fill |
+        !P_move
+    ) | !oracle

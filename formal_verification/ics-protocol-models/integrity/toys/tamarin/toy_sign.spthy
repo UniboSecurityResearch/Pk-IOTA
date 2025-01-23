@@ -1,0 +1,99 @@
+theory OPCUA_Toy_sign
+begin
+
+section{* OPCUA_Transport *}
+
+/*
+ * Protocol:    OPCUA_Transport
+ * Modeler:     Dreier Jannik, Maxime Puys and Pascal Lafourcade      
+ * Date:        27 june 2016
+ * Status:      OPCUA Transport
+ */
+
+builtins: signing, symmetric-encryption, hashing, multiset
+
+/* Equations for MAC, similar as signature but with symmetric keys */
+functions : mac/2, verifyMac/3
+equations: verifyMac(mac(m, sk), m, sk)=true
+
+
+/* Shared keys session generation */
+rule genKeySign:
+    [ Fr(~x) ]
+    --[ Key('sign', $C, ~x) ]->
+    [ !Ltk('sign', $C, ~x), Out(pk(~x)) ]
+
+/*
+rule corrupt:
+    [ !Sym(type, $C, ~x) ]
+    --[ Corrupt(type, $C, ~x) ]->
+    [ Out(<type, $C, ~x>) ]
+*/
+
+/* rule initA:
+    [ ]
+    --[ InitA($A, $B) ]->
+    [ State_A($A, $B, zero) ]
+*/
+
+rule Send_A:
+    let m = ~m
+    in
+    [ Fr(~m),  !Ltk('sign', $A, keyA) ]
+    --[ Send($A, $B, m) ]->
+    [ Out( sign(m, keyA)) ]
+
+rule Recv_B:
+    [!Ltk('sign', $A, keyA), In(sign(m, keyA)) ]
+    --[ Recv($A, $B, m) ]->
+    [  ]
+
+
+restriction Equality:
+    "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+
+restriction Inequality:
+    "All x #i. Neq(x, x) @ #i ==> F"
+
+//restriction Unique_Sequence_Number_A:
+//    "All A B #i #j. ((InitA(A, B) @ #i & InitA(A, B) @ #j) ==> #i = #j)"
+
+//restriction Unique_Sequence_Number_B:
+//    "All A B seq #i #j. ((Seq_Recv(A, B, seq) @ #i & Seq_Recv(A, B, seq) @ #j) ==> #i = #j)"
+
+// Typing Lemma ?
+//lemma open_chains [source]:
+//    "All A B seq #i.(Seq_Send(A, B, seq) @ #i ==> (seq = '1' | Ex x. seq = '1' + x))"
+
+/*
+restriction Test:
+    "All A B seq #i.(Seq_Send(A, B, seq) @ #i ==> (seq = '1' | seq = '1' + '1' | seq = '1' + '1' + '1' | seq = '1' + '1' + '1' + '1'))"
+*/
+
+//restriction Test:
+//    "All A B seq #i.(Seq_Send(A, B, seq) @ #i ==> (seq = zero | seq = suc(zero) | seq = suc(suc(zero)) | seq = suc(suc(suc(zero)))))"
+
+
+// The protocol is executable.
+lemma Executable:
+    exists-trace
+    "Ex A B m #i. Recv(A, B, m) @ #i"
+
+
+// Non-Injective Message Integrity
+lemma NIMI:
+    all-traces
+    "All A B m #i.(Recv(A,B,m) @ #i ==> (Ex #k. Send(A,B,m) @ #k))"
+
+
+// Injective Message Integrity
+lemma IMI:
+    "All A B t #i. 
+    Recv(A,B,t) @i
+    ==> (Ex #j. Send(A,B,t) @j 
+        & j < i
+        & not (Ex A2 B2 #i2. Recv(A2,B2,t) @i2
+                           & not (#i2 = #i)))"
+
+end

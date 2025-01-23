@@ -1,0 +1,181 @@
+(*  OpcUaClient --[CreateSessionRequest]--> SessionEndpoint
+    SessionEndpoint --[Ns2]--> OpcUaClient
+    OpcUaClient --[pkCli, Login, Password]--> SessionEndpoint
+    SessionEndpoint --[ActivateSessionResponse]--> OpcUaClient
+*)
+
+free c: channel.
+
+
+(* Hosts *)
+type host.
+free A, B, C, D: host.
+
+
+(* Hash function *)
+fun h(bitstring): bitstring.
+
+
+(* Symetric key crypto *)
+fun senc(bitstring, bitstring): bitstring.
+reduc forall x: bitstring, k: bitstring ; sdec(senc(x, k), k) = x.
+
+
+(* Signatures *)
+fun pub(bitstring): bitstring.
+fun sk(host): bitstring.
+fun sign(bitstring, bitstring): bitstring.
+reduc forall x:bitstring, s:bitstring, k:bitstring ; verifySign(x, sign(x, k), pub(k)) = true.
+fun hmac(bitstring, bitstring): bitstring.
+reduc forall x:bitstring, s:bitstring, k:bitstring ; verifyHmac(x, hmac(x, k), k) = true.
+
+
+(* Constants *)
+const CreateSessionRequest: bitstring.
+const CreateSessionResponse: bitstring.
+const ActivateSessionRequest: bitstring.
+const ActivateSessionResponse: bitstring.
+
+
+(* Private keys *)
+free skA: bitstring [private].
+free skB: bitstring [private].
+free skC: bitstring [private].
+free skD: bitstring [private].
+
+
+(* Secrets *)
+fun Login(bitstring): bitstring.
+fun Passwd(bitstring, bitstring): bitstring.
+reduc forall x: bitstring, y: bitstring ; verifyCreds(x, Login(pub(y)), Passwd(y, pub(x))) = true.
+
+
+(* Events *)
+event msg1(host, host).
+event msg2(host, host).
+event msg3(host, host).
+event msg4(host, host).
+
+
+(* Goals *)
+query X: host, Y: host ; event(msg4(X, Y)) ==> (event(msg3(X, Y)) ==> (event(msg2(X, Y)) ==> event(msg1(X, Y)))).
+
+
+let client(skA: bitstring, skB: bitstring, skC: bitstring, skD: bitstring, ch: channel) = 
+    in(c, (Cli: host, Sess: host));
+    if Cli = C || Cli = D || Sess = A || Sess = B then 0 else
+    new K: bitstring;
+    out(ch, (Cli, Sess, K));
+    let skCli = if Cli = A then skA else if Cli = B then skB in
+    let pkCli = pub(skCli) in
+    let skSess = if Sess = C then skC else if Sess = D then skD else sk(Sess) in
+    let pkSess = pub(skSess) in
+
+    (* Due to result on OpenSecureChannel, K is compromised. *)
+    out(c, K);
+
+    (* Role starting *)
+    new Nc: bitstring;
+    let m1 = (CreateSessionRequest, pkCli, Nc) in
+    out(c, (m1, hmac(m1, K)));
+
+    in(c, (m2: bitstring, sigM2: bitstring));
+    if verifyHmac(m2, sigM2, K) <> true then 0 else
+    let (=CreateSessionResponse, =pkSess, sigNc: bitstring, Ns: bitstring) = m2 in
+    if verifySign(h((pkCli, Nc)), sigNc, pkSess) <> true then 0 else
+    if Sess = C || Sess = D then
+        event msg2(Cli, Sess);
+
+        let sigNs = sign(h((pkSess, Ns)), skCli) in
+        let m3 = (ActivateSessionRequest, pkCli, sigNs, Login(pkCli), Passwd(skCli, pkSess)) in
+        out(c, (m3, hmac(m3, K)));
+
+        in(c, (m4: bitstring, sigM4: bitstring));
+        if verifyHmac(m4, sigM4, K) <> true then 0 else
+        let (=ActivateSessionResponse, Ns2: bitstring) = m4 in
+        if Sess = C || Sess = D then
+            event msg4(Cli, Sess)
+    else
+        let sigNs = sign(h((pkSess, Ns)), skCli) in
+        let m3 = (ActivateSessionRequest, pkCli, sigNs, Login(pkCli), Passwd(skCli, pkSess)) in
+        out(c, (m3, hmac(m3, K)));
+
+        in(c, (m4: bitstring, sigM4: bitstring));
+        if verifyHmac(m4, sigM4, K) <> true then 0 else
+        let (=ActivateSessionResponse, Ns2: bitstring) = m4 in
+        if Sess = C || Sess = D then
+            event msg4(Cli, Sess).
+
+
+let sess(skA: bitstring, skB: bitstring, skC: bitstring, skD: bitstring, ch: channel) = 
+    in(ch, (Cli: host, Sess: host, K: bitstring));
+    if Cli = C || Cli = D || Sess = A || Sess = B then 0 else
+    let skCli = if Cli = A then skA else if Cli = B then skB else sk(Cli) in
+    let pkCli = pub(skCli) in
+    let skSess = if Sess = C then skC else if Sess = D then skD in
+    let pkSess = pub(skSess) in
+
+    (* Due to result on OpenSecureChannel, K is compromised. *)
+    out(c, K);
+
+    (* Role starting *)
+    in(c, (m1: bitstring, sigM1: bitstring));
+    if verifyHmac(m1, sigM1, K) <> true then 0 else
+    let (=CreateSessionRequest, =pkCli, Nc: bitstring) = m1 in
+    if Cli = C || Cli = D then
+        event msg1(Cli, Sess);
+
+        new Ns: bitstring;
+        let sigNc = sign(h((pkCli, Nc)), skSess) in
+        let m2 = (CreateSessionResponse, pkSess, sigNc, Ns) in
+        out(c, (m2, hmac(m2, K)));
+
+        in(c, (m3: bitstring, sigM3: bitstring));
+        if verifyHmac(m3, sigM3, K) <> true then 0 else
+        let (=ActivateSessionRequest, =pkCli, sigNs: bitstring, login: bitstring, passwd: bitstring) = m3 in
+        if verifySign(h((pkSess, Ns)), sigNs, pkCli) <> true then 0 else
+        if verifyCreds(skSess, login, passwd) <> true then 0 else
+        if Cli = C || Cli = D then
+            event msg3(Cli, Sess);
+
+            new Ns2: bitstring;
+            let m4 = (ActivateSessionResponse, Ns2) in
+            out(c, (m4, hmac(m4, K)))
+        else
+            new Ns2: bitstring;
+            let m4 = (ActivateSessionResponse, Ns2) in
+            out(c, (m4, hmac(m4, K)))
+    else
+        new Ns: bitstring;
+        let sigNc = sign(h((pkCli, Nc)), skSess) in
+        let m2 = (CreateSessionResponse, pkSess, sigNc, Ns) in
+        out(c, (m2, hmac(m2, K)));
+
+        in(c, (m3: bitstring, sigM3: bitstring));
+        if verifyHmac(m3, sigM3, K) <> true then 0 else
+        let (=ActivateSessionRequest, =pkCli, sigNs: bitstring, login: bitstring, passwd: bitstring) = m3 in
+        if verifySign(h((pkSess, Ns)), sigNs, pkCli) <> true then 0 else
+        if verifyCreds(skSess, login, passwd) <> true then 0 else
+        if Cli = C || Cli = D then
+            event msg3(Cli, Sess);
+
+            new Ns2: bitstring;
+            let m4 = (ActivateSessionResponse, Ns2) in
+            out(c, (m4, hmac(m4, K)))
+        else
+            new Ns2: bitstring;
+            let m4 = (ActivateSessionResponse, Ns2) in
+            out(c, (m4, hmac(m4, K))).
+
+
+
+process
+    let pkA = pub(skA) in out(c, pkA);
+    let pkB = pub(skB) in out(c, pkB);
+    let pkC = pub(skC) in out(c, pkC);
+    let pkD = pub(skD) in out(c, pkD);
+
+    !(new ch: channel;
+      client(skA, skB, skC, skD, ch)  |
+      sess(skA, skB, skC, skD, ch)
+    )

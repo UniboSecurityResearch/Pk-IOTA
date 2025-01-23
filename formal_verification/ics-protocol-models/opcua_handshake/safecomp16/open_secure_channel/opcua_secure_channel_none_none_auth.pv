@@ -1,0 +1,162 @@
+(* Copyright 2016-2017 Univ. Grenoble Alpes
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*)
+
+
+(*  OpcUaClient --[GetEndpointRequest]--> DiscoveryEndpoint
+    DiscorevyEndpoint --[SP, None, UP, pk(SessionEndpoint)]--> OpcUaClient
+    OpcUaClient --[pk(OpcUaClient), SP, exp(g, Nc)]--> SessionEndpoint
+    SessionEndpoint --[exp(g, Ns)]--> OpcUaClient
+*)
+
+free c: channel.
+
+
+(* Hosts *)
+type host.
+free A, B, C, I: host.
+
+
+(* Hash function *)
+fun h(bitstring): bitstring.
+
+
+(* Symetric key crypto *)
+fun senc(bitstring, bitstring): bitstring.
+reduc forall x: bitstring, k: bitstring ; sdec(senc(x, k), k) = x.
+
+
+(* Public key crypto *)
+fun sk(host): bitstring.
+fun pub(bitstring): bitstring.
+fun enc(bitstring, bitstring): bitstring.
+fun dec(bitstring, bitstring): bitstring.
+equation forall x: bitstring, k: bitstring ; dec(enc(x, pub(k)), k) = x.
+
+
+(* Signatures *)
+fun sign(bitstring, bitstring): bitstring.
+reduc forall x:bitstring, s:bitstring, k:bitstring ; verify(x, sign(x, k), pub(k)) = true.
+
+
+(* Diffie-Hellman *)
+const g: bitstring.
+fun exp(bitstring, bitstring): bitstring.
+equation forall x: bitstring, y: bitstring; exp(exp(g, x), y) = exp(exp(g, y), x).
+
+
+(* Constants *)
+const GetEndpointRequest: bitstring.
+const GetEndpointResponse: bitstring.
+const OpenSecureChannelRequest: bitstring.
+const OpenSecureChannelResponse: bitstring.
+
+const None: bitstring.
+const Sign: bitstring.
+const SignAndEncrypt: bitstring.
+
+
+(* Private keys *)
+free skA: bitstring [private].
+free skB: bitstring [private].
+free skC: bitstring [private].
+
+
+(* Goals *)
+event beginCli(host, host, bitstring).
+event endCli(host, host, bitstring).
+event beginSrv(host, host, bitstring).
+event endSrv(host, host, bitstring).
+
+query X: host, Y: host, N: bitstring ; event(endSrv(X, Y, N)) ==> event(beginCli(X, Y, N)).
+query X: host, Y: host, N: bitstring ; event(endCli(X, Y, N)) ==> event(beginSrv(X, Y, N)).
+
+
+let client(skA: bitstring, skB: bitstring, skC: bitstring) = 
+    in(c, (Cli: host, Disco: host, Sess: host));
+    let skCli = if Cli = A then skA else if Cli = B then skB else if Cli = C then skC in
+    let pkCli = pub(skCli) in
+    let pkDisco = if Disco = A then pub(skA) else if Disco = B then pub(skB) else if Disco = C then pub(skC) else pub(sk(Disco)) in
+    let pkSess = if Sess = A then pub(skA) else if Sess = B then pub(skB) else if Sess = C then pub(skC) else pub(sk(Sess)) in
+
+    (* Role starting *)
+    out(c, GetEndpointRequest);
+
+    in(c, (=GetEndpointResponse, =pkSess, =None, SP: bitstring, UP: bitstring));
+
+    new Nc: bitstring;
+    (*let gNc = exp(g, Nc) in*)
+    let m1 = (OpenSecureChannelRequest, pkCli, Nc) in
+    event beginCli(Cli, Sess, Nc);
+    out(c, (pkCli, m1));
+
+    in(c, (em2: bitstring));
+    let m2 = em2 in
+    let (=OpenSecureChannelResponse, Ns: bitstring, ST: bitstring, TTL: bitstring) = m2 in
+    if Sess = A || Sess = B || Sess = C then
+    event endCli(Sess, Cli, Ns).
+
+
+let disco(skA: bitstring, skB: bitstring, skC: bitstring) = 
+    in(c, (Cli: host, Disco: host, Sess: host));
+    let skDisco = if Disco = A then skA else if Disco = B then skB else if Disco = C then skC in
+    let pkDisco = pub(skDisco) in
+    let pkCli = if Cli = A then pub(skA) else if Cli = B then pub(skB) else if Cli = C then pub(skC) else pub(sk(Cli)) in
+    let pkSess = if Sess = A then pub(skA) else if Sess = B then pub(skB) else if Sess = C then pub(skC) else pub(sk(Sess)) in
+
+    (* Role starting *)
+    in(c, =GetEndpointRequest);
+
+    new SP: bitstring;
+    new UP: bitstring;
+    out(c, (GetEndpointResponse, pkSess, None, SP, UP)).
+
+
+let sess(skA: bitstring, skB: bitstring, skC: bitstring) = 
+    in(c, (Cli: host, Disco: host, Sess: host));
+    let skSess = if Sess = A then skA else if Sess = B then skB else if Sess = C then skC in
+    let pkSess = pub(skSess) in
+    let pkCli = if Cli = A then pub(skA) else if Cli = B then pub(skB) else if Cli = C then pub(skC) else pub(sk(Cli)) in
+    let pkDisco = if Disco = A then pub(skA) else if Disco = B then pub(skB) else if Disco = C then pub(skC) else pub(sk(Disco)) in
+
+    (* Role starting *)
+    in(c, (=pkCli, em1: bitstring));
+    let m1 = em1 in
+    let (=OpenSecureChannelRequest, =pkCli, Nc: bitstring) = m1 in
+    
+    new Ns: bitstring;
+    new ST: bitstring;
+    new TTL: bitstring;
+    (*let gNs = exp(g, Ns) in*)
+    let m2 = (OpenSecureChannelResponse, Ns, ST, TTL) in
+    event beginSrv(Sess, Cli, Ns);
+    out(c, (m2));
+    if Cli = A || Cli = B || Cli = C then
+    event endSrv(Cli, Sess, Nc).
+
+
+process
+    let pkA = pub(skA) in out(c, pkA);
+    let pkB = pub(skB) in out(c, pkB);
+    let pkC = pub(skC) in out(c, pkC);
+
+    (!client(skA, skB, skC) |
+     !disco(skA, skB, skC) |
+     !sess(skA, skB, skC)
+    )

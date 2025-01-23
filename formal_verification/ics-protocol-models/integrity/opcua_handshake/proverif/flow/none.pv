@@ -1,0 +1,80 @@
+(*  C --[TransactionID, Req]--> S
+    S --[TransactionID, Resp] --> C
+    C --[TransactionID+1, Req] --> S
+    S --[TransactionID+1, Resp] --> C
+    ...
+*)
+
+free c: channel.
+free cCO, cSO: channel [private].
+
+free zero: bitstring.
+fun suc(bitstring): bitstring [private].
+
+type request.
+type response.
+
+(* Cryotpo primitives *)
+type key.
+fun senc(bitstring, key): bitstring.
+reduc forall x: bitstring, k: key ; sdec(senc(x, k), k) = x.
+
+(* Public key crypto *)
+fun pub(key): key.
+fun enc(bitstring, key): bitstring.
+reduc forall x: bitstring, k: key ; dec(enc(x, pub(k)), k) = x.
+
+(* Signatures *)
+fun sign(bitstring, key): bitstring.
+reduc forall x: bitstring, k: key ; verify(x, sign(x, k), pub(k)) = true.
+
+(* Goals *)
+event different.
+query event(different).
+
+
+(* Integrity check *)
+let oracle =
+    let id = zero in
+    in(cCO, (=id, reqc: bitstring, resc: bitstring));
+    in(cSO, (=id, reqs: bitstring, ress: bitstring));
+    if (reqc, resc) <> (reqs, ress) then event different else
+    
+    let id = suc(id) in
+    in(cCO, (=id, reqc: bitstring, resc: bitstring));
+    in(cSO, (=id, reqs: bitstring, ress: bitstring));
+    if (reqc, resc) <> (reqs, ress) then event different else 0.
+
+
+let client =
+    let id = zero in
+    new req: request;
+    out(c, (id, req));
+    in(c, (=id, res: response));
+    out(cCO, (id, req, res));
+
+    let id = suc(id) in
+    new req: request;
+    out(c, (id, req));
+    in(c, (=id, res: response));
+    out(cCO, (id, req, res)).
+
+
+let server =
+    let id = zero in
+    in(c, (=id, req: request));
+    new res: response;
+    out(cSO, (id, req, res));
+    out(c, (id, res));
+
+    let id = suc(id) in
+    in(c, (=id, req: request));
+    new res: response;
+    out(cSO, (id, req, res));
+    out(c, (id, res)).
+
+process
+    (client |
+     server |
+     oracle
+    )

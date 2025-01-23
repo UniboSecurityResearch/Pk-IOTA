@@ -1,0 +1,149 @@
+theory OPC_UA_Secure_Conversation_Modulo_Resilient
+begin
+
+section{* OPC_UA_Secure_Conversation_Modulo_Resilient *}
+
+/*
+ * Protocol:    OPC UA Secure Conversation, mode SignAndEcrypt, sequence number modulo three
+ * Modeler:     Jannik Dreier, Maxime Puys and Pascal Lafourcade      
+ * Date:        28 August 2016
+ * Status:      Working, attack on order
+ */
+
+builtins: symmetric-encryption
+
+/* Equations for MAC, similar as signature but with symmetric keys */
+functions : mac/2, verifyMac/3, true/0, suc/1, zero/0
+equations: verifyMac(mac(m, sk), m, sk)=true,
+           // We use sequence umbers modulo 4:
+           suc(suc(suc(suc(x))))=x
+
+/* Shared keys session generation */
+rule genSharedKeySign:
+    [ Fr(~x) ]
+    --[ SharedKey('sign', $C, $S, ~x) ]->
+    [ !LtkSym('sign', $C, $S, ~x) ]
+
+rule genSharedKeyEnc:
+    [ Fr(~x) ]
+    --[ SharedKey('enc', $C, $S, ~x) ]->
+    [ !LtkSym('enc', $C, $S, ~x) ]
+
+rule initA:
+    [ ]
+    --[ InitA($A, $B) ]->
+    [ State_A($A, $B, zero) ]
+
+rule Send_A:
+    let message = <$MH, SH, senc(<seq, ~m, $pad, mac(<$MH, SH, seq, ~m, $pad>, keySigAB)>, keyEncAB)>
+    in
+    [ Fr(~m), !LtkSym('enc', $A, $B, keyEncAB), !LtkSym('sign', $A, $B, keySigAB), State_A($A, $B, seq), In(SH) ]
+    --[ Sent($A, $B, ~m), Seq_Sent($A, $B, seq), Ch_Sent(message) ]->
+    [ Out(message), State_A($A, $B, suc(seq)) ]
+
+rule Recv_B:
+    let message = <MH, SH, senc(<seq, m, pad, mac(<MH, SH, seq, m, pad>, keySigAB)>, keyEncAB)>
+    in
+    [!LtkSym('enc', $A, $B, keyEncAB), !LtkSym('sign', $A, $B, keySigAB), In(message) ]
+    --[ Received($A, $B, m), Seq_Received($A, $B, seq), Ch_Received(message) ]->
+    [  ]
+
+// AXIOMS
+
+// A only uses one sequence number per session
+restriction Unique_Sequence_Number_A:
+    "All A B #i #j. ((InitA(A, B) @ #i & InitA(A, B) @ #j) ==> #i = #j)"
+
+// B accepts a sequence number only once
+restriction Unique_Sequence_Number_B:
+    "All A B seq #i #j. ((Seq_Received(A, B, seq) @ #i & Seq_Received(A, B, seq) @ #j) ==> #i = #j)"
+
+/*
+ B accepts a sequence number only if
+ - it is zero and it has not received any other sequence number previously or
+ - it is greater than zero and it has either
+   - received the previous sequence number or
+   - received no other sequence number previously
+*/
+restriction Increment_Sequence_Number_B:
+    "All A B seq #i. ((Seq_Received(A, B, seq) @ #i) ==> (
+      ((seq = zero) & (not(Ex seq3 #k. (Seq_Received(A, B, seq3) @ #k & #k < #i)) ))
+    | (Ex seq2. 
+       (seq = suc(seq2) & 
+        (
+           (Ex #j. Seq_Received(A, B, seq2) @ #j & #j < #i) 
+         | (not(Ex seq3 #k. (Seq_Received(A, B, seq3) @ #k & #k < #i)) )
+        )
+       )
+      )
+    ))"
+
+// Axioms to restrict the used sequence numbers
+restriction Restrict_Numbers_Sent:
+    "All A B seq #i.(Seq_Sent(A, B, seq) @ #i ==> (seq = zero | seq = suc(zero) | seq = suc(suc(zero)) | seq = suc(suc(suc(zero)))))"
+
+restriction Restrict_Numbers_Recv:
+    "All A B seq #i.(Seq_Received(A, B, seq) @ #i ==> (seq = zero | seq = suc(zero) | seq = suc(suc(zero)) | seq = suc(suc(suc(zero)))))"
+
+// Resilient Channel Axiom
+// Included in relevant properties as a hypothesis, leads to non termination for other properties.
+// restriction delivery:
+//     "All m #i. Ch_Sent(m) @ #i ==> Ex #j. Ch_Received(m) @ #j & #i < #j"
+
+// LEMMAS
+
+// The protocol is executable.
+lemma Executable:
+    exists-trace
+    "Ex A B m #i. Received(A, B, m) @ #i"
+
+
+// Non-Injective Message Authenticity
+lemma NIMA:
+    all-traces
+    "All A B m #i.(Received(A,B,m) @ #i ==> (Ex #k. Sent(A,B,m) @ #k))"
+
+// Injective Message Authenticity
+lemma IMA:
+    "All A B t #i. 
+    Received(A,B,t) @i
+    ==> (Ex #j. Sent(A,B,t) @j 
+        & j < i
+        & not (Ex A2 B2 #i2. Received(A2,B2,t) @i2
+                           & not (#i2 = #i)))"
+
+// Flow Authenticity
+lemma FA:
+    all-traces
+    "(All m #i. Ch_Sent(m) @ #i ==> Ex #j. Ch_Received(m) @ #j & #i < #j) 
+     ==>
+     (All A B m m2 #i #j.(Received(A,B,m) @ #i & Received(A,B,m2) @ #j & #i < #j ==> (Ex #k #l. (Sent(A,B,m) @ #k & Sent(A,B,m2) @ #l & #k < #l) )))"
+
+
+// Non-Injective Message Delivery
+lemma NIMD:
+    all-traces
+    "(All m #i. Ch_Sent(m) @ #i ==> Ex #j. Ch_Received(m) @ #j & #i < #j) 
+     ==>
+     (All A B m #i.(Sent(A,B,m) @ #i ==> (Ex #k. Received(A,B,m) @ #k)))"
+
+// Injective Message Delivery
+lemma IMD:
+    "(All m #i. Ch_Sent(m) @ #i ==> Ex #j. Ch_Received(m) @ #j & #i < #j) 
+     ==>
+     (All A B t #i. 
+      Sent(A,B,t) @i
+      ==> (Ex #j. Received(A,B,t) @j 
+          & i < j
+          & not (Ex A2 B2 #i2. Sent(A2,B2,t) @i2
+                           & not (#i2 = #i))))"
+
+// Flow Delivery
+lemma FD:
+    all-traces
+    "(All m #i. Ch_Sent(m) @ #i ==> Ex #j. Ch_Received(m) @ #j & #i < #j) 
+     ==>
+     (All A B m m2 #i #j.(Sent(A,B,m) @ #i & Sent(A,B,m2) @ #j & #i < #j ==> (Ex #k #l. (Received(A,B,m) @ #k & Received(A,B,m2) @ #l & #k < #l) )))"
+
+
+end

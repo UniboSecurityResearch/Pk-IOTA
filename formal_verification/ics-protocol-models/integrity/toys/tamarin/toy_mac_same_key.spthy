@@ -1,0 +1,75 @@
+theory OPCUA_Toy_mac_same_key
+begin
+
+section{* OPCUA_Transport *}
+
+/*
+ * Protocol:    OPCUA_Transport
+ * Modeler:     Dreier Jannik, Maxime Puys and Pascal Lafourcade      
+ * Date:        27 june 2016
+ * Status:      OPCUA Transport
+ */
+
+builtins: signing, symmetric-encryption, hashing, multiset
+
+/* Equations for MAC, similar as signature but with symmetric keys */
+functions : mac/2, verifyMac/3
+equations: verifyMac(mac(m, sk), m, sk)=true
+
+
+/* Shared keys session generation */
+rule genSharedKeyMac:
+    [ Fr(~x) ]
+    --[ SharedKey('mac', $C, $S, ~x), Neq($C, $S) ]->
+    [ !LtkSym('mac', $C+$S, ~x)  ]
+
+/*
+rule corrupt:
+    [ !LtkSym(type, $C, $S, ~x) ]
+    --[ Corrupt(type, $C, $S, ~x) ]->
+    [ Out(<type, $C, $S, ~x>) ]
+*/
+
+rule Send_A:
+    let m = ~m
+    in
+    [ Fr(~m),  !LtkSym('mac', $A+$B, keyMacAB) ]
+    --[ Send($A, $B, m) ]->
+    [ Out( mac(m, keyMacAB)) ]
+
+rule Recv_B:
+    [!LtkSym('mac', $A+$B, keyMacAB), In(mac(m, keyMacAB)) ]
+    --[ Recv($A, $B, m)]->
+    [  ]
+
+
+restriction Equality:
+    "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+
+restriction Inequality:
+    "All x #i. Neq(x, x) @ #i ==> F"
+
+
+// The protocol is executable.
+lemma Executable:
+    exists-trace
+    "Ex A B m #i. Recv(A, B, m) @ #i"
+
+
+// Non-Injective Message Integrity
+lemma NIMI:
+    all-traces
+    "All A B m #i.(Recv(A,B,m) @ #i ==> (Ex #k. Send(A,B,m) @ #k))"
+
+
+// Injective Message Integrity
+lemma IMI:
+    "All A B t #i. 
+    Recv(A,B,t) @i
+    ==> (Ex #j. Send(A,B,t) @j 
+        & j < i
+        & not (Ex A2 B2 #i2. Recv(A2,B2,t) @i2
+                           & not (#i2 = #i)))"
+
+end

@@ -1,0 +1,171 @@
+(*  OpcUaClient --[GetEndpointRequest]--> DiscoveryEndpoint
+    DiscorevyEndpoint --[SP, None, UP, pk(SessionEndpoint)]--> OpcUaClient
+    OpcUaClient --[pk(OpcUaClient), SP, exp(g, Nc)]--> SessionEndpoint
+    SessionEndpoint --[exp(g, Ns)]--> OpcUaClient
+*)
+
+free c: channel.
+
+
+(* Hosts *)
+type host.
+free A, B, C, I: host.
+
+
+(* Hash function *)
+fun h(bitstring): bitstring.
+
+
+(* Symetric key crypto *)
+fun senc(bitstring, bitstring): bitstring.
+reduc forall x: bitstring, k: bitstring ; sdec(senc(x, k), k) = x.
+
+
+(* Public key crypto *)
+fun sk(host): bitstring.
+fun pub(bitstring): bitstring.
+fun enc(bitstring, bitstring): bitstring.
+fun dec(bitstring, bitstring): bitstring.
+equation forall x: bitstring, k: bitstring ; dec(enc(x, pub(k)), k) = x.
+
+
+(* Signatures *)
+fun sign(bitstring, bitstring): bitstring.
+reduc forall x:bitstring, s:bitstring, k:bitstring ; verify(x, sign(x, k), pub(k)) = true.
+
+
+(* Diffie-Hellman *)
+const g: bitstring.
+fun exp(bitstring, bitstring): bitstring.
+equation forall x: bitstring, y: bitstring; exp(exp(g, x), y) = exp(exp(g, y), x).
+
+
+(* Constants *)
+const GetEndpointRequest: bitstring.
+const GetEndpointResponse: bitstring.
+const OpenSecureChannelRequest: bitstring.
+const OpenSecureChannelResponse: bitstring.
+
+const None: bitstring.
+const Sign: bitstring.
+const SignAndEncrypt: bitstring.
+
+
+(* Private keys *)
+free skA: bitstring [private].
+free skB: bitstring [private].
+free skC: bitstring [private].
+
+
+(* Goals *)
+event msg1(host, host, host).
+event msg2(host, host, host).
+event msg3(host, host, host).
+event msg4(host, host, host).
+query X: host, Y: host, Z: host ; event(msg4(X, Y, Z)) ==> (event(msg3(X, Y, Z)) ==> (event(msg2(X, Y, Z)) ==> event(msg1(X, Y, Z)))).
+
+
+let client(skA: bitstring, skB: bitstring, skC: bitstring) = 
+    in(c, (Cli: host, Disco: host, Sess: host));
+    let skCli = if Cli = A then skA else if Cli = B then skB else if Cli = C then skC in
+    let pkCli = pub(skCli) in
+    let pkDisco = if Disco = A then pub(skA) else if Disco = B then pub(skB) else if Disco = C then pub(skC) else pub(sk(Disco)) in
+    let pkSess = if Sess = A then pub(skA) else if Sess = B then pub(skB) else if Sess = C then pub(skC) else pub(sk(Sess)) in
+
+    (* Role starting *)
+    out(c, GetEndpointRequest);
+
+    in(c, (=GetEndpointResponse, =pkSess, =SignAndEncrypt, SP: bitstring, UP: bitstring));
+    if Disco = A || Disco = B || Disco = C then
+        event msg2(Cli, Disco, Sess);
+
+        new Nc: bitstring;
+        let wNc = enc(Nc, pkSess) in
+        let m1 = (OpenSecureChannelRequest, Sess, pkCli, wNc) in
+        out(c, (pkCli, enc(m1, pkSess), sign(h(m1), skCli)));
+
+        in(c, (em2: bitstring, sigM2: bitstring));
+        let m2 = dec(em2, skCli) in
+        if verify(h(m2), sigM2, pkSess) <> true then 0 else
+        let (=OpenSecureChannelResponse, =Cli, wNs: bitstring, ST:bitstring, TTL: bitstring) = m2 in
+        let Ns = dec(wNs, skCli) in
+        if Sess = A || Sess = B || Sess = C then
+            event msg4(Cli, Disco, Sess)
+    else
+        new Nc: bitstring;
+        let wNc = enc(Nc, pkSess) in
+        let m1 = (OpenSecureChannelRequest, Sess, pkCli, wNc) in
+        out(c, (pkCli, enc(m1, pkSess), sign(h(m1), skCli)));
+
+        in(c, (em2: bitstring, sigM2: bitstring));
+        let m2 = dec(em2, skCli) in
+        if verify(h(m2), sigM2, pkSess) <> true then 0 else
+        let (=OpenSecureChannelResponse, =Cli, wNs: bitstring, ST:bitstring, TTL: bitstring) = m2 in
+        let Ns = dec(wNs, skCli) in
+        if Sess = A || Sess = B || Sess = C then
+            event msg4(Cli, Disco, Sess).
+
+
+let disco(skA: bitstring, skB: bitstring, skC: bitstring) = 
+    in(c, (Cli: host, Disco: host, Sess: host));
+    let skDisco = if Disco = A then skA else if Disco = B then skB else if Disco = C then skC in
+    let pkDisco = pub(skDisco) in
+    let pkCli = if Cli = A then pub(skA) else if Cli = B then pub(skB) else if Cli = C then pub(skC) else pub(sk(Cli)) in
+    let pkSess = if Sess = A then pub(skA) else if Sess = B then pub(skB) else if Sess = C then pub(skC) else pub(sk(Sess)) in
+
+    (* Role starting *)
+    in(c, =GetEndpointRequest);
+    if Cli = A || Cli = B || Cli = C then
+        event msg1(Cli, Disco, Sess);
+
+        new SP: bitstring;
+        new UP: bitstring;
+
+        out(c, (GetEndpointResponse, pkSess, None, SP, UP))
+    else
+        new SP: bitstring;
+        new UP: bitstring;
+
+        out(c, (GetEndpointResponse, pkSess, None, SP, UP)).
+
+
+let sess(skA: bitstring, skB: bitstring, skC: bitstring) = 
+    in(c, (Cli: host, Disco: host, Sess: host));
+    let skSess = if Sess = A then skA else if Sess = B then skB else if Sess = C then skC in
+    let pkSess = pub(skSess) in
+    let pkCli = if Cli = A then pub(skA) else if Cli = B then pub(skB) else if Cli = C then pub(skC) else pub(sk(Cli)) in
+    let pkDisco = if Disco = A then pub(skA) else if Disco = B then pub(skB) else if Disco = C then pub(skC) else pub(sk(Disco)) in
+
+    (* Role starting *)
+    in(c, (=pkCli, em1: bitstring, sigM1: bitstring));
+    let m1 = dec(em1, skSess) in
+    if verify(h(m1), sigM1, pkCli) <> true then 0 else
+    let (=OpenSecureChannelRequest, =Sess, =pkCli, wNc: bitstring) = m1 in
+    let Nc = dec(wNc, skSess) in
+    if Cli = A || Cli = B || Cli = C then
+        event msg3(Cli, Disco, Sess);
+        
+        new Ns: bitstring;
+        new ST: bitstring;
+        new TTL: bitstring;
+        let wNs = enc(Ns, pkCli) in
+        let m2 = (OpenSecureChannelResponse, Cli, wNs, ST, TTL) in
+        out(c, (enc(m2, pkCli), sign(h(m2), skSess)))
+    else
+        new Ns: bitstring;
+        new ST: bitstring;
+        new TTL: bitstring;
+        let wNs = enc(Ns, pkCli) in
+        let m2 = (OpenSecureChannelResponse, Cli, wNs, ST, TTL) in
+        out(c, (enc(m2, pkCli), sign(h(m2), skSess))).
+
+
+process
+    let pkA = pub(skA) in out(c, pkA);
+    let pkB = pub(skB) in out(c, pkB);
+    let pkC = pub(skC) in out(c, pkC);
+
+    (!client(skA, skB, skC) |
+     !disco(skA, skB, skC) |
+     !sess(skA, skB, skC)
+    )

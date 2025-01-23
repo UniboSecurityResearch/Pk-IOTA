@@ -1,0 +1,74 @@
+(*  Modbus
+    A -> B: m, sign((m), skA)
+*)
+
+free c: channel.
+
+free cAO: channel [private].
+free cBO: channel [private].
+
+type host.
+free Alice, Bob: host.
+
+
+(* Signatures *)
+type key.
+free skA, skB: key [private].
+fun sk(host): key.
+fun pub(key): key.
+
+fun h(bitstring): bitstring.
+fun sign(bitstring, key): bitstring.
+reduc forall x: bitstring, k: key ; verify(x, sign(x, k), pub(k)) = true.
+
+
+(* Secrecy *)
+free m: bitstring [private].
+query attacker(m).
+
+
+(* Authentication *)
+event begin(host, host, bitstring).
+event end(host, host, bitstring).
+query a:host, b: host, x: bitstring ; event(end(a, b, x)) ==> event(begin(a, b, x)).
+
+
+(* Integrity *)
+event different(host, host, bitstring).
+query a:host, b: host, x: bitstring ; event(different(a, b, x)) ==> (event(end(a, b, x)) && event(begin(a, b, x))).
+
+
+let oracle =
+    in(cAO, (A: host, B: host, m1: bitstring));
+    in(cBO, (=A, =B, m2: bitstring));
+    if m1 = m2 then 0 else event different(A, B, m2).
+
+
+let alice(skA: key, skB: key) =
+    in(c, (A: host, B: host));
+    if A <> Alice && A <> Bob then 0 else
+    let sk = if A = Alice then skA else if A = Bob then skB in
+
+    event begin(A, B, m);
+    out(cAO, (A, B, m));
+    out(c, (m, sign(m, sk))).
+
+
+let bob(pkA: key, pkB: key) =
+    in(c, (A: host, B: host));
+    if B <> Alice && B <> Bob then 0 else
+    let pk = if A = Alice then pkA else if A = Bob then pkB else pub(sk(A)) in
+
+    in(c, (x: bitstring, sigX: bitstring));
+    if verify(x, sigX, pk) <> true then 0 else
+    event end(A, B, x);
+    out(cBO, (A, B, x)).
+
+
+process
+    let pkA = pub(skA) in out(c, pkA);
+    let pkB = pub(skB) in out(c, pkB);
+
+    oracle |
+    alice(skA, skB) |
+    bob(pkA, pkB)

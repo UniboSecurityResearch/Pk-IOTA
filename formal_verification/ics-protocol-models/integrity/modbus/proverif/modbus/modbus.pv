@@ -1,0 +1,54 @@
+(*  Modbus
+    A -> B: m
+*)
+
+free c: channel.
+
+free cAO: channel [private].
+free cBO: channel [private].
+
+type host.
+free Alice, Bob: host.
+
+
+(* Secrecy *)
+free m: bitstring [private].
+query attacker(m).
+
+
+(* Authentication *)
+event begin(host, host, bitstring).
+event end(host, host, bitstring).
+query a:host, b: host, x: bitstring ; event(end(a, b, x)) ==> event(begin(a, b, x)).
+
+
+(* Integrity *)
+event different(host, host, bitstring).
+query a:host, b: host, x: bitstring ; event(different(a, b, x)) ==> (event(end(a, b, x)) && event(begin(a, b, x))).
+
+
+let oracle =
+    in(cAO, (A: host, B: host, m1: bitstring));
+    in(cBO, (=A, =B, m2: bitstring));
+    if m1 = m2 then 0 else event different(A, B, m2).
+
+
+let alice =
+    in(c, (A: host, B: host));
+    if A <> Alice && A <> Bob then 0 else
+
+    event begin(A, B, m);
+    out(cAO, (A, B, m));
+    out(c, m).
+
+
+let bob =
+    in(c, (A: host, B: host));
+    if B <> Alice && B <> Bob then 0 else
+
+    in(c, x: bitstring);
+    event end(A, B, x);
+    out(cBO, (A, B, x)).
+
+
+process oracle | alice | bob

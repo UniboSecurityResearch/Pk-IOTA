@@ -1,0 +1,68 @@
+(*  Public key encryption
+    A -> B: {m}_pub(skB)
+*)
+
+free c: channel.
+
+type host.
+free A, B: host.
+
+free cAO: channel [private].
+free cBO: channel [private].
+
+fun pub(bitstring): bitstring.
+fun sk(host): bitstring.
+
+fun enc(bitstring, bitstring): bitstring.
+fun dec(bitstring, bitstring): bitstring.
+equation forall x: bitstring, y: bitstring; dec(y, enc(pub(y), x)) = x.
+
+free skA, skB: bitstring [private].
+free m: bitstring [private].
+
+event begin(host, host, bitstring).
+event end(host, host, bitstring).
+query X: host, Y: host, Z: bitstring; event(end(X, Y, Z)) ==> event(begin(X, Y, Z)).
+
+event different(host, host, bitstring).
+event sent(host, host, bitstring).
+event received(host, host, bitstring).
+query X: host, Y: host, N: bitstring ; event(different(X, Y, N)) ==> (event(sent(X, Y, N)) && event(received(X, Y, N))).
+
+
+let oracle =
+    in(cAO, (X: host, Y: host, m1: bitstring));
+    in(cBO, (=X, =Y, m2: bitstring));
+    if m1 = m2 then 0 else event different(X, Y, m2).
+
+
+let alice =
+    in(c, (X: host, Y: host));
+    if X <> A && X <> B then 0 else
+    let pk = if Y = A then pub(skA) else if Y = B then pub(skB) else pub(sk(Y)) in
+
+    (* Role starting *)
+    new m: bitstring;
+    event sent(X, Y, m);
+    event begin(X, Y, m);
+    out(cAO, (X, Y, m));
+    out(c, enc(pk, (m, Y))).
+
+
+let bob = 
+    in(c, (X: host, Y: host));
+    if Y <> A && Y <> B then 0 else
+    let sk = if Y = A then skA else if Y = B then skB else sk(Y) in
+
+    (* Role starting *)
+    in(c, y: bitstring);
+    let (x: bitstring, =Y) = dec(sk, y) in
+    event received(X, Y, x);
+    out(cBO, (X, Y, x));
+    if X = A || X = B then event end(X, Y, x).
+
+
+process
+    out(c, pub(skA));
+    out(c, pub(skB));
+    oracle | alice | bob

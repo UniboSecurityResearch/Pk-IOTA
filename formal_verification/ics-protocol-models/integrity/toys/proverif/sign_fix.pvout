@@ -1,0 +1,55 @@
+File "sign_fix.pv", line 41, character 9 - line 41, character 11:
+Warning: identifier sk rebound
+File "sign_fix.pv", line 44, character 9 - line 44, character 10:
+Warning: identifier m rebound
+Process:
+{1}out(c, pub(skA));
+{2}out(c, pub(skB));
+(
+    {3}in(cAO, (X: host,Y: host,m1: bitstring));
+    {4}in(cBO, (=X,=Y,m2: bitstring));
+    {5}if (m1 = m2) then
+        0
+    else
+        {6}event different(X,Y,m2)
+) | (
+    {7}in(c, (X_45: host,Y_46: host));
+    {8}if ((X_45 <> A) && (X_45 <> B)) then
+        0
+    else
+        {9}let sk_47: bitstring = (if (X_45 = A) then skA else (if (X_45 = B) then skB else sk(X_45))) in
+        {10}new m_48: bitstring;
+        {11}event sent(X_45,Y_46,m_48);
+        {12}event begin(X_45,Y_46,m_48);
+        {13}out(cAO, (X_45,Y_46,m_48));
+        {14}let x_49: bitstring = (m_48,Y_46) in
+        {15}out(c, (x_49,sign(sk_47,x_49)))
+) | (
+    {16}in(c, (X_50: host,Y_51: host));
+    {17}if ((Y_51 <> A) && (Y_51 <> B)) then
+        0
+    else
+        {18}let pk: bitstring = (if (X_50 = A) then pub(skA) else (if (X_50 = B) then pub(skB) else pub(sk(X_50)))) in
+        {19}in(c, (y_52: bitstring,sY: bitstring));
+        {20}if (verify(pk,sY,y_52) <> true) then
+            0
+        else
+            {21}let (x_53: bitstring,=Y_51) = y_52 in
+            {22}event received(X_50,Y_51,x_53);
+            {23}out(cBO, (X_50,Y_51,x_53));
+            {24}if ((X_50 = A) || (X_50 = B)) then
+            {25}event end(X_50,Y_51,x_53)
+)
+
+-- Query event(different(X_54,Y_55,N)) ==> (event(sent(X_54,Y_55,N)) && event(received(X_54,Y_55,N)))
+Completing...
+Starting query event(different(X_54,Y_55,N)) ==> (event(sent(X_54,Y_55,N)) && event(received(X_54,Y_55,N)))
+RESULT event(different(X_54,Y_55,N)) ==> (event(sent(X_54,Y_55,N)) && event(received(X_54,Y_55,N))) is true.
+-- Query event(end(X_1931,Y_1932,Z)) ==> event(begin(X_1931,Y_1932,Z))
+Completing...
+Starting query event(end(X_1931,Y_1932,Z)) ==> event(begin(X_1931,Y_1932,Z))
+goal reachable: begin(begin(B[],A[],m_48[Y_46 = A[],X_45 = B[]])) -> end(end(B[],A[],m_48[Y_46 = A[],X_45 = B[]]))
+goal reachable: begin(begin(A[],B[],m_48[Y_46 = B[],X_45 = A[]])) -> end(end(A[],B[],m_48[Y_46 = B[],X_45 = A[]]))
+goal reachable: begin(begin(B[],B[],m_48[Y_46 = B[],X_45 = B[]])) -> end(end(B[],B[],m_48[Y_46 = B[],X_45 = B[]]))
+goal reachable: begin(begin(A[],A[],m_48[Y_46 = A[],X_45 = A[]])) -> end(end(A[],A[],m_48[Y_46 = A[],X_45 = A[]]))
+RESULT event(end(X_1931,Y_1932,Z)) ==> event(begin(X_1931,Y_1932,Z)) is true.

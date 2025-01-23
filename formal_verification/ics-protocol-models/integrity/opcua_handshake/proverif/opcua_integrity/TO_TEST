@@ -1,0 +1,3 @@
+Events à la réception et non à l'envoi
+Participants/nonces dans les events pour éviter des session avec uniquement l'intru
+Pour open secure channel, séparer la propriété en deux (on pourrait légitimement éviter le discovery)
