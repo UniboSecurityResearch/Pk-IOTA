@@ -55,3 +55,8 @@ Clone the repository:
    ```bash
    python3 ua_client_with_encryption.py
    ```
+
+### Cite us
+If you find this work interesting and use it in your academic research, please cite our paper!
+
+[![DOI](https://zenodo.org/badge/749721589.svg)](https://doi.org/10.5281/zenodo.14751962)
