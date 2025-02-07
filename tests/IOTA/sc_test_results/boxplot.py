@@ -1,90 +1,53 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-from matplotlib.lines import Line2D  # Import for custom legend lines
+import React from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-sns.set_theme(style="ticks")
+const CategoryTimeline = () => {
+  const data = [
+    { year: 2009, "Job Role": 1 },
+    { year: 2010, "Age": 1, "Gender": 1 },
+    { year: 2011, "Culture": 1, "Gender": 1, "Sector": 1 },
+    { year: 2014, },
+    { year: 2015, "Age": 1, "Cybersecurity Background": 1 },
+    { year: 2016, "Age": 2, "Gender": 2, "Education Level": 1, "Social Influence": 1, "Culture": 1 },
+    { year: 2017, "Age": 2, "Gender": 3, "Culture": 3, "Sector": 2 },
+    { year: 2018, "Age": 2, "Gender": 1, "Education Level": 1, "Sector": 2 },
+    { year: 2019, "Age": 2, "Gender": 2, "Education Level": 1, "Sector": 1, "Work Experience": 1, "Culture": 1 },
+    { year: 2020, "Age": 4, "Gender": 3, "Education Level": 1, "Culture": 1, "Sector": 1, "Job Role": 1 },
+    { year: 2021, "Gender": 2, "Education Level": 1, "Sector": 1, "Job Experience": 1 },
+    { year: 2022, "Age": 2, "Gender": 3, "Education Level": 2, "Culture": 1 },
+    { year: 2023, "Age": 4, "Gender": 2, "Education Level": 4, "Sector": 3, "Culture": 3 },
+    { year: 2024, "Age": 3, "Gender": 3, "Education Level": 2, "Culture": 4, "Job Role": 1, "Job Experience": 1 }
+  ];
 
-# Initialize the figure with a more rectangular shape
-f, ax = plt.subplots(figsize=(12, 6))  # Increased width to allow space for "Type" label
+  return (
+    <div className="w-full h-96 p-4">
+      <h2 className="text-xl font-bold text-center mb-4">Evolution of Demographic Categories in Cybersecurity Research (2009-2024)</h2>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis 
+            dataKey="year"
+            label={{ value: 'Year', position: 'bottom', offset: 0 }}
+          />
+          <YAxis 
+            label={{ value: 'Number of Studies', angle: -90, position: 'insideLeft' }}
+          />
+          <Tooltip />
+          <Legend />
+          <Line type="monotone" dataKey="Age" stroke="#0000FF" strokeWidth={2} />
+          <Line type="monotone" dataKey="Gender" stroke="#FF0000" strokeWidth={2} />
+          <Line type="monotone" dataKey="Education Level" stroke="#00FF00" strokeWidth={2} />
+          <Line type="monotone" dataKey="Culture" stroke="#800080" strokeWidth={2} />
+          <Line type="monotone" dataKey="Sector" stroke="#FFA500" strokeWidth={2} />
+          <Line type="monotone" dataKey="Job Role" stroke="#A52A2A" strokeWidth={2} />
+          <Line type="monotone" dataKey="Job Experience" stroke="#FF1493" strokeWidth={2} />
+          <Line type="monotone" dataKey="Work Experience" stroke="#808080" strokeWidth={2} />
+          <Line type="monotone" dataKey="Cybersecurity Background" stroke="#006400" strokeWidth={2} />
+          <Line type="monotone" dataKey="Social Influence" stroke="#00FFFF" strokeWidth={2} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
-# Load the data from the CSV file
-data = pd.read_csv("/home/giac/Pk-IOTA/tests/IOTA/sc_test_results/sc.csv")
-
-# Remove 'Smart Contract' from the 'Type' column for visualization
-data["Type"] = data["Type"].str.replace("Smart Contract", "", regex=False).str.strip()  # Rimuove spazi in eccesso
-
-# Convert 'Time (ms)' from milliseconds to seconds
-data["Time (s)"] = data["Time (ms)"] / 1000  # Divide by 1000 to convert ms to s
-
-# Define base colors for each geographical distance
-base_palette = {
-    "EU-EU": ["#3b7196", "#9dbfeb"],   # Blu e celeste
-    "EU-AUS": ["#aaafb3", "#d6cbcb"],  # Grigio celeste e grigio rosa
-    "USA-AUS": ["#ff9896", "#a63f40"]  # Rosso e rosso chiaro
-}
-
-# Assign colors to each 'Type' based on its distance category
-palette = [base_palette[type_.split()[0]][i % 2] for i, type_ in enumerate(data["Type"].unique())]
-
-# Set border colors and styles for 'txt' and 'pem' formats
-border_colors = {
-    "txt": ("black", "dashed"),  # Black dashed border for txt formats
-    "pem": ("black", "solid")  # Black solid border for pem formats
-}
-
-# Plot the boxplots with customized colors and borders
-for i, type_ in enumerate(data["Type"].unique()):
-    # Determine border color and fill color based on format and distance
-    format_type = "txt" if "txt" in type_ else "pem"
-    edge_color, line_style = border_colors[format_type]
-    fill_color = palette[i]
-    
-    sns.boxplot(
-        data=data[data["Type"] == type_],
-        x="Time (s)", y="Type", whis=[0, 100],
-        width=0.6, color=fill_color,  # Set fill color
-        ax=ax, boxprops=dict(edgecolor=edge_color, linewidth=1, linestyle=line_style)  # Set edge color and dashed style
-    )
-
-# Overlay individual data points with corresponding box colors
-for i, type_ in enumerate(data["Type"].unique()):
-    sns.stripplot(
-        data=data[data["Type"] == type_],
-        x="Time (s)", y="Type", size=2,
-        color=palette[i], jitter=True, ax=ax
-    )
-
-# Set x-axis limits
-ax.set_xlim(0, 3)  # Adjusted to reflect seconds, assuming the max time in ms is 25000
-
-# Customize the visual presentation further
-ax.xaxis.grid(True)
-ax.set_ylabel("Type", fontsize=19)  # Increase the font size of y-axis label
-ax.set_xlabel("Time (s)", fontsize=19)  # Increase the font size of x-axis label
-
-# Increase font size of tick labels
-ax.tick_params(axis="x", labelsize=15)  # X-axis ticks
-ax.tick_params(axis="y", labelsize=15)  # Y-axis ticks
-
-# Add a title to the plot
-plt.title("Smart Contract", fontsize=22, pad=22)  # Increase title font size
-
-# Adjust layout to make space for y-axis labels and prevent clipping
-plt.subplots_adjust(left=0.18, right=0.87)  # Adjusted spacing on the left for labels
-
-# Remove top and left spines to improve the appearance
-sns.despine(trim=True, left=True)
-
-# Create a custom legend with dashed and solid lines for 'txt' and 'pem'
-legend_lines = [
-    Line2D([0], [0], color="black", linestyle="solid", lw=2, label="pem (solid border)"),
-    Line2D([0], [0], color="black", linestyle="dashed", lw=2, label="txt (dashed border)")
-]
-ax.legend(handles=legend_lines, loc="center left", bbox_to_anchor=(0.81, 0.85), fontsize=14)
-
-# Save the plot as a PDF
-plt.savefig("/home/giac/Pk-IOTA/tests/IOTA/sc_test_results/plot_sc.pdf", format="pdf")
-
-# Show the plot
-plt.show()
+export default CategoryTimeline;
