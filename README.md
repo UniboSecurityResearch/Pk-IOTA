@@ -16,7 +16,7 @@
 -->
 # Pk-IOTA
 
-his repository contains the code and the dataset for the paper "Pk-IOTA: Blockchain empowered Programmable Data Plane to secure OPC UA communications in Industry 4.0"
+This repository contains the code and the dataset for the paper "Pk-IOTA: Blockchain empowered Programmable Data Plane to secure OPC UA communications in Industry 4.0"
 
 ## Repository Structure
 - **IOTA_src:** contains all the source code to run the certificate transactions on the IOTA ledger; it also contains the source code of smart contracts and the frontend that interacts with it. All the dependencies and guides to run the software and the tests are inside the directory.
