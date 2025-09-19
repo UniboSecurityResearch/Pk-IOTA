@@ -101,6 +101,7 @@ struct tcp_metadata_t
 
 struct metadata {
     tcp_metadata_t tcp_metadata;
+    bit<1> isOPN;
 }
 
 struct headers {
