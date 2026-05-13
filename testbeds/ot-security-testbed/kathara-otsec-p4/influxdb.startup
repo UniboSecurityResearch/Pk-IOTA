@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+. /shared/common_service.sh
+ensure_iproute
+
+setup_iface eth0 10.11.0.12/16
+populate_otsec_hosts
+add_static_neigh eth0 10.11.0.11 02:11:00:00:00:11
+add_static_neigh eth0 10.11.0.13 02:11:00:00:00:13
+add_static_neigh eth0 10.11.0.14 02:11:00:00:00:14
+add_static_neigh eth0 10.11.0.20 02:11:00:00:00:20
+add_static_neigh eth0 10.11.0.21 02:11:00:00:00:21
+add_static_neigh eth0 10.11.0.22 02:11:00:00:00:22
+add_static_neigh eth0 10.11.0.23 02:11:00:00:00:23
+add_static_neigh eth0 10.11.0.24 02:11:00:00:00:24

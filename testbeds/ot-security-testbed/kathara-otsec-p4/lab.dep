@@ -1,0 +1,9 @@
+telegraf: s1
+influxdb: s1
+chronograf: s1
+kapacitor: s1
+industrial_process: s1
+openplc: s1
+fuxa: s1
+attacker: s1
+shellinabox: s1
