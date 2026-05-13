@@ -1,0 +1,8 @@
+# Ensure switches are started before their attached services where needed.
+plc_server: s_it s_plc
+plc_historian: plc_server s_plc
+headunit_dashboard: plc_server s_it
+valve_server: s_ot
+levelsensor_server: s_ot s_lsensor
+water_tank_simulation: levelsensor_server s_lsensor
+plc_logic: plc_server levelsensor_server valve_server s_plc s_ot

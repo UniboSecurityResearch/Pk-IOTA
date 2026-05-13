@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+. /shared/common_service.sh
+ensure_iproute
+
+setup_iface eth0 10.10.20.12/24
+
+add_static_neigh eth0 10.10.20.11 02:00:00:10:02:01
+add_static_neigh eth0 10.10.20.13 02:00:00:10:02:03
