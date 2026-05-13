@@ -1,0 +1,269 @@
+theory OPCUA_GDS_Bootstrap_Push_Pull_Attacks
+begin
+
+section{* OPCUA + GDS Push/Pull (insecure bootstrap) => attacks *}
+
+builtins: signing, asymmetric-encryption, hashing
+
+/* ------------------------------------------------------------------ */
+/* Key generation (honest client/server)                               */
+/* ------------------------------------------------------------------ */
+
+rule genServerKey:
+  [ Fr(~xS) ]
+  --[ ServerKey($S, pk(~xS)) ]->
+  [ !Ltk($S, ~xS), Out(<$S, pk(~xS)>) ]
+
+rule genClientKey:
+  [ Fr(~xC) ]
+  --[ ClientKey($C, pk(~xC)) ]->
+  [ !Ltk($C, ~xC), Out(<$C, pk(~xC)>) ]
+
+/* Adversary-owned signing key (so the intruder can sign as fake GDS / fake endpoint) */
+rule AdvKeyGen:
+  [ Fr(~xA) ]
+  --[ AdvKey(pk(~xA)) ]->
+  [ Out(~xA) ]
+
+
+/* ------------------------------------------------------------------ */
+/* GDS bootstrap model                                                 */
+/* If nodes do NOT have GDS cert/CA pinned OR they do not verify it,   */
+/* attacker can impersonate GDS and make the node accept a fake pkGDS. */
+/* ------------------------------------------------------------------ */
+
+/* Node tries to "get GDS certificate" (abstract) */
+rule Node_RequestGDSCert:
+  [ !Ltk($N, ~xN) ]
+  --[ ReqGDSCert($N) ]->
+  [ Out(< 'GetGDSCert', $N >) ]
+
+/* VULNERABLE BOOTSTRAP:
+   Node accepts any "GDS certificate/public key" without verification/pinning. */
+rule Node_AcceptGDSCert_Unverified:
+  [ In(< 'GDSCert', $N, pkGDS >) ]
+  --[ GDSKeyAcceptedUnverified($N, pkGDS) ]->
+  [ !GDSKey($N, pkGDS) ]
+
+
+/* ------------------------------------------------------------------ */
+/* GDS Push/Pull trustlist distribution (signed by whatever key node   */
+/* thinks is the GDS key).                                             */
+/* If pkGDS is attacker-controlled, attacker can sign and install TL.  */
+/* ------------------------------------------------------------------ */
+
+/* PUSH: node registers */
+rule Node_RegisterPush:
+  [ !Ltk($N, ~xN) ]
+  --[ RegisterPush($N) ]->
+  [ !PushReg($N), Out(< 'RegPush', $N >) ]
+
+/* Node installs a pushed trust item if it verifies under stored pkGDS */
+rule Node_InstallPushTL:
+  [ !PushReg($N),
+    !GDSKey($N, pkGDS),
+    In(< 'PushTL', $N, pkPeer, sig >)
+  ]
+  --[
+    Eq(verify(sig, h(< 'PushTL', $N, pkPeer >), pkGDS), true),
+    PushTrusted($N, pkPeer)
+  ]->
+  [ !Trusted($N, pkPeer) ]
+
+
+/* PULL: node requests */
+rule Node_PullReq:
+  [ !Ltk($N, ~xN) ]
+  --[ PullReq($N) ]->
+  [ !PullPending($N), Out(< 'PullReq', $N >) ]
+
+/* Node installs a pulled trust item if it verifies under stored pkGDS */
+rule Node_InstallPullTL:
+  [ !PullPending($N),
+    !GDSKey($N, pkGDS),
+    In(< 'PullTL', $N, pkPeer, sig >)
+  ]
+  --[
+    Eq(verify(sig, h(< 'PullTL', $N, pkPeer >), pkGDS), true),
+    PullTrusted($N, pkPeer)
+  ]->
+  [ !Trusted($N, pkPeer) ]
+
+
+/* ------------------------------------------------------------------ */
+/* Simplified OPC UA handshake: GetEndpoints + OpenSecureChannel       */
+/* Gate on !Trusted facts coming from (possibly compromised) GDS.      */
+/* Binding is done by ciphertext-structure pattern matching.           */
+/* ------------------------------------------------------------------ */
+
+/* C -> S : GEReq */
+rule Init:
+  [ ]
+  --[ Init($C, $S) ]->
+  [ Out('GEReq') ]
+
+/* S -> C : GERes, pk(S), SignEnc, SP, UP */
+rule Resp_Init:
+let
+  m2 = <'GERes', pk(~xS), 'SignEnc', $SP, $UP>
+in
+  [ In('GEReq'), !Ltk($S, ~xS) ]
+  --[ Resp($C, $S, pk(~xS)) ]->
+  [ Out(m2) ]
+
+/* C -> S : OSCReq encrypted to keyS, signed by client.
+   Client proceeds only if keyS is in its Trusted list (from GDS). */
+rule Resp_Client:
+let
+  geres = <'GERes', keyS, 'SignEnc', sp, up>
+  req   = <'OSCReq', $C, pk(~xC), ~nc>
+in
+  [ In(geres),
+    !Ltk($C, ~xC),
+    !Trusted($C, keyS),
+    Fr(~nc)
+  ]
+  --[
+    Resp_Client($C, $S, ~nc, keyS, pk(~xC)),
+    WitnessNc($C, $S, ~nc, pk(~xC))
+  ]->
+  [ Out(< pk(~xC),
+         aenc(req, keyS),
+         sign{h(req)}~xC,
+         h(req) >) ]
+
+/* S receives OSCReq:
+   Server proceeds only if pkC is in its Trusted list (from GDS). */
+rule Resp_Server:
+let
+  res = <'OSCRes', $S, ~ns, $ST, $TTL>
+in
+  [ !Ltk($S, ~xS),
+    !Trusted($S, pkC),
+
+    In(< pkC,
+        aenc(< 'OSCReq', $C, pkC, nc>, pk(~xS)),
+        sigC,
+        h(< 'OSCReq', $C, pkC, nc>) >),
+
+    Fr(~ns)
+  ]
+  --[
+    Eq(verify(sigC, h(< 'OSCReq', $C, pkC, nc>), pkC), true),
+
+    Resp_Server($C, $S, ~ns, pkC, pk(~xS)),
+    RequestNc($C, $S, nc, pkC),
+    WitnessNs($S, $C, ~ns, pk(~xS))
+  ]->
+  [ Out(< pk(~xS),
+         aenc(res, pkC),
+         sign{h(res)}~xS,
+         h(res) >) ]
+
+/* Client receives OSCRes:
+   Client proceeds only if pkS is in its Trusted list (from GDS). */
+rule Auth_Client:
+  [ !Ltk($C, ~xC),
+    !Trusted($C, pkS),
+
+    In(< pkS,
+        aenc(< 'OSCRes', $S, ns, st, ttl>, pk(~xC)),
+        sigS,
+        h(< 'OSCRes', $S, ns, st, ttl>) >)
+  ]
+  --[
+    Eq(verify(sigS, h(< 'OSCRes', $S, ns, st, ttl>), pkS), true),
+    RequestNs($S, $C, ns, pkS)
+  ]->
+  [ ]
+
+
+/* ------------------------------------------------------------------ */
+/* Equality axiom: Eq is an ACTION used above                          */
+/* ------------------------------------------------------------------ */
+
+axiom Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+
+/* ------------------------------------------------------------------ */
+/* Attack lemmas: with insecure bootstrap, fake GDS can install a TL   */
+/* that enables Rogue Client / Rogue Server / MITM, in both push/pull. */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------- PUSH MODE ------------------------------ */
+
+lemma Rogue_Client_exists_GDS_Push_Bootstrap:
+  exists-trace
+  "Ex M S nc pkM #t0 #t1 #t2 #i.
+      AdvKey(pkM) @ #t0
+    & GDSKeyAcceptedUnverified(S, pkM) @ #t1
+    & PushTrusted(S, pkM) @ #t2
+    & #t2 < #i
+    & RequestNc(M, S, nc, pkM) @ #i
+    & (All C2 pkC2 #j. WitnessNc(C2, S, nc, pkC2) @ #j ==> F)"
+
+lemma Rogue_Server_exists_GDS_Push_Bootstrap:
+  exists-trace
+  "Ex M C ns pkM #t0 #t1 #t2 #i.
+      AdvKey(pkM) @ #t0
+    & GDSKeyAcceptedUnverified(C, pkM) @ #t1
+    & PushTrusted(C, pkM) @ #t2
+    & #t2 < #i
+    & RequestNs(M, C, ns, pkM) @ #i
+    & (All S2 pkS2 #j. WitnessNs(S2, C, ns, pkS2) @ #j ==> F)"
+
+lemma Middleperson_exists_GDS_Push_Bootstrap:
+  exists-trace
+  "Ex M C S nc ns pkM #t0 #tC #tS #t1 #t2 #i #j.
+      AdvKey(pkM) @ #t0
+    & GDSKeyAcceptedUnverified(C, pkM) @ #tC
+    & GDSKeyAcceptedUnverified(S, pkM) @ #tS
+    & PushTrusted(C, pkM) @ #t1
+    & PushTrusted(S, pkM) @ #t2
+    & #t1 < #j
+    & #t2 < #i
+    & RequestNc(M, S, nc, pkM) @ #i
+    & RequestNs(M, C, ns, pkM) @ #j
+    & (All C2 pkC2 #k. WitnessNc(C2, S, nc, pkC2) @ #k ==> F)
+    & (All S2 pkS2 #l. WitnessNs(S2, C, ns, pkS2) @ #l ==> F)"
+
+
+/* ------------------------- PULL MODE ------------------------------ */
+
+lemma Rogue_Client_exists_GDS_Pull_Bootstrap:
+  exists-trace
+  "Ex M S nc pkM #t0 #t1 #t2 #i.
+      AdvKey(pkM) @ #t0
+    & GDSKeyAcceptedUnverified(S, pkM) @ #t1
+    & PullTrusted(S, pkM) @ #t2
+    & #t2 < #i
+    & RequestNc(M, S, nc, pkM) @ #i
+    & (All C2 pkC2 #j. WitnessNc(C2, S, nc, pkC2) @ #j ==> F)"
+
+lemma Rogue_Server_exists_GDS_Pull_Bootstrap:
+  exists-trace
+  "Ex M C ns pkM #t0 #t1 #t2 #i.
+      AdvKey(pkM) @ #t0
+    & GDSKeyAcceptedUnverified(C, pkM) @ #t1
+    & PullTrusted(C, pkM) @ #t2
+    & #t2 < #i
+    & RequestNs(M, C, ns, pkM) @ #i
+    & (All S2 pkS2 #j. WitnessNs(S2, C, ns, pkS2) @ #j ==> F)"
+
+lemma Middleperson_exists_GDS_Pull_Bootstrap:
+  exists-trace
+  "Ex M C S nc ns pkM #t0 #tC #tS #t1 #t2 #i #j.
+      AdvKey(pkM) @ #t0
+    & GDSKeyAcceptedUnverified(C, pkM) @ #tC
+    & GDSKeyAcceptedUnverified(S, pkM) @ #tS
+    & PullTrusted(C, pkM) @ #t1
+    & PullTrusted(S, pkM) @ #t2
+    & #t1 < #j
+    & #t2 < #i
+    & RequestNc(M, S, nc, pkM) @ #i
+    & RequestNs(M, C, ns, pkM) @ #j
+    & (All C2 pkC2 #k. WitnessNc(C2, S, nc, pkC2) @ #k ==> F)
+    & (All S2 pkS2 #l. WitnessNs(S2, C, ns, pkS2) @ #l ==> F)"
+
+end

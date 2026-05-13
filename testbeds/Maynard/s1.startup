@@ -1,0 +1,13 @@
+ip link set mtu 2000 eth0
+ip link set mtu 2000 eth1
+
+p4c opcua_extraction.p4
+simple_switch -i 1@eth0 -i 2@eth1 --log-console opcua_extraction.json &
+
+while [[ $(pgrep simple_switch) -eq 0 ]]; do sleep 1; done
+until simple_switch_CLI <<< "help"; do sleep 1; done
+
+simple_switch_CLI <<< $(cat commands.txt)
+
+tcpdump -i eth0 -w s1_ingress.pcap &
+tcpdump -i eth1 -w s1_egress.pcap &

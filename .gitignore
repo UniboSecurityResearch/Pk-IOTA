@@ -170,3 +170,7 @@ stronghold.rs/
 
 # IOTA virtualenv
 virtualenv/
+
+# Codex
+.codex/
+.agents/

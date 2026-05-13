@@ -72,7 +72,7 @@ legend_handles = [
     mpatches.Patch(color="tab:blue", label="Without Certificate Validation"),
     mpatches.Patch(color="tab:orange", label="With Certificate Validation")
 ]
-plt.legend(handles=legend_handles, loc='upper center', bbox_to_anchor=(0.5, 1.20), ncol=1, fontsize=12)
+plt.legend(handles=legend_handles, loc='upper center', bbox_to_anchor=(0.5, 1.20), ncol=2, fontsize=14)
 
 # plt.xticks(fontsize=18)  # Set dimension of the numbers on the x axis to 18
 plt.yticks(fontsize=16)  # Set dimension of the numbers on the y axis to 18
