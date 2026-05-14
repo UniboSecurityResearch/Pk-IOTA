@@ -10,10 +10,14 @@ Usage:
 
 Options:
   --root DIR                Project root (default: parent of this script)
-  --results-dir DIR         Output directory for campaigns/logs (default: <root>/results)
+  --results-dir DIR         Output directory for campaigns/logs (default: <root>/tests/TESTBEDS)
   --profile NAME            main | smoke (default: main)
   --tag NAME                Output suffix tag (default: profile name)
   --status-only             Print runtime/results status and exit
+  --tcpreplay-image IMG     Image for Maynard replay hosts (default: loriringhio97/maynard-tcpreplay:latest)
+  --asyncua-image IMG       Image for 1client_1server hosts (default: loriringhio97/oneclient-oneserver-asyncua:latest)
+  --wireshark-image IMG     Common wireshark image (default: lscr.io/linuxserver/wireshark)
+  --set-lab-images          Rewrite lab.conf image refs for Maynard + 1client_1server
 
   --skip-preflight          Skip tool/version checks
   --skip-clean              Skip preventive kathara lclean on all labs
@@ -43,6 +47,9 @@ Options:
 
 Examples:
   ./testbeds/run_remote_campaigns.sh --profile smoke --tag smoke_ci
+  ./testbeds/run_remote_campaigns.sh --profile smoke --set-lab-images \
+    --tcpreplay-image myuser/maynard-tcpreplay:v1 \
+    --asyncua-image myuser/oneclient-oneserver-asyncua:v1
   ./testbeds/run_remote_campaigns.sh --profile main --skip-formal
   ./testbeds/run_remote_campaigns.sh --status-only
 EOF
@@ -65,6 +72,13 @@ DO_MOTRA=1
 DO_OTSEC=1
 DO_CERT=1
 DO_FORMAL=1
+DO_SET_LAB_IMAGES=0
+
+TCPREPLAY_IMAGE="loriringhio97/maynard-tcpreplay:latest"
+ASYNCUA_IMAGE="loriringhio97/oneclient-oneserver-asyncua:latest"
+WIRESHARK_IMAGE="lscr.io/linuxserver/wireshark"
+
+MOTRA_BASE_READY=1
 
 MAYNARD_RUNS=""
 MAYNARD_TIMEOUT=""
@@ -229,15 +243,25 @@ run_clean() {
 run_pull_common_images() {
   local imgs=(
     "kathara/p4"
-    "loriringhio97/tcpreplay"
-    "loriringhio97/asyncua"
-    "lscr.io/linuxserver/wireshark"
+    "$TCPREPLAY_IMAGE"
+    "$ASYNCUA_IMAGE"
+    "$WIRESHARK_IMAGE"
   )
   log "Pulling common images"
   for img in "${imgs[@]}"; do
     echo "  - docker pull $img"
     docker pull "$img"
   done
+}
+
+run_set_lab_images() {
+  local script="$ROOT_DIR/testbeds/set_lab_images.sh"
+  require_file "$script"
+  log "Applying custom lab image refs (Maynard + 1client_1server)"
+  "$script" \
+    --root "$ROOT_DIR" \
+    --tcpreplay-image "$TCPREPLAY_IMAGE" \
+    --asyncua-image "$ASYNCUA_IMAGE"
 }
 
 run_build_motra() {
@@ -261,12 +285,14 @@ run_build_motra() {
     fi
   done
   if [[ "${#missing[@]}" -gt 0 ]]; then
-    echo "Missing MOTRA base image(s):" >&2
+    echo "WARNING: Missing MOTRA base image(s):" >&2
     for img in "${missing[@]}"; do
       echo "  - $img" >&2
     done
-    echo "Build/pull them first, then rerun." >&2
-    exit 1
+    echo "MOTRA wrapper build will be skipped." >&2
+    echo "Build/pull base images first, then rerun to include MOTRA." >&2
+    MOTRA_BASE_READY=0
+    return 0
   fi
 
   log "Building MOTRA wrapper images"
@@ -416,6 +442,10 @@ while [[ $# -gt 0 ]]; do
     --profile) PROFILE="${2:-}"; shift 2 ;;
     --tag) TAG="${2:-}"; shift 2 ;;
     --status-only) STATUS_ONLY=1; shift ;;
+    --tcpreplay-image) TCPREPLAY_IMAGE="${2:-}"; shift 2 ;;
+    --asyncua-image) ASYNCUA_IMAGE="${2:-}"; shift 2 ;;
+    --wireshark-image) WIRESHARK_IMAGE="${2:-}"; shift 2 ;;
+    --set-lab-images) DO_SET_LAB_IMAGES=1; shift ;;
 
     --skip-preflight) DO_PREFLIGHT=0; shift ;;
     --skip-clean) DO_CLEAN=0; shift ;;
@@ -449,7 +479,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$RESULTS_DIR" ]]; then
-  RESULTS_DIR="$ROOT_DIR/results"
+  RESULTS_DIR="$ROOT_DIR/tests/TESTBEDS"
 fi
 if [[ -z "$TAG" ]]; then
   TAG="$PROFILE"
@@ -480,6 +510,9 @@ require_file "$ROOT_DIR/formal_verification/pk-iota/gds.spthy"
 log "root_dir=$ROOT_DIR"
 log "results_dir=$RESULTS_DIR"
 log "profile=$PROFILE tag=$TAG"
+log "tcpreplay_image=$TCPREPLAY_IMAGE"
+log "asyncua_image=$ASYNCUA_IMAGE"
+log "wireshark_image=$WIRESHARK_IMAGE"
 
 if [[ "$STATUS_ONLY" -eq 1 ]]; then
   print_status
@@ -497,29 +530,36 @@ fi
 if [[ "$DO_CLEAN" -eq 1 ]]; then
   run_with_log "clean" "$LOG_DIR/02_clean.log" run_clean
 fi
+if [[ "$DO_SET_LAB_IMAGES" -eq 1 ]]; then
+  run_with_log "set_lab_images" "$LOG_DIR/03_set_lab_images.log" run_set_lab_images
+fi
 if [[ "$DO_PULL" -eq 1 ]]; then
-  run_with_log "pull_common_images" "$LOG_DIR/03_pull.log" run_pull_common_images
+  run_with_log "pull_common_images" "$LOG_DIR/04_pull.log" run_pull_common_images
 fi
 if [[ "$DO_BUILD_MOTRA" -eq 1 ]]; then
-  run_with_log "build_motra" "$LOG_DIR/04_build_motra.log" run_build_motra
+  run_with_log "build_motra" "$LOG_DIR/05_build_motra.log" run_build_motra
 fi
 if [[ "$DO_BUILD_OTSEC" -eq 1 ]]; then
-  run_with_log "build_otsec" "$LOG_DIR/05_build_otsec.log" run_build_otsec
+  run_with_log "build_otsec" "$LOG_DIR/06_build_otsec.log" run_build_otsec
 fi
 if [[ "$DO_MAYNARD" -eq 1 ]]; then
-  run_with_log "maynard" "$LOG_DIR/06_maynard.log" run_maynard_campaign
+  run_with_log "maynard" "$LOG_DIR/07_maynard.log" run_maynard_campaign
 fi
 if [[ "$DO_MOTRA" -eq 1 ]]; then
-  run_with_log "motra" "$LOG_DIR/07_motra.log" run_motra_campaign
+  if [[ "$MOTRA_BASE_READY" -eq 1 ]]; then
+    run_with_log "motra" "$LOG_DIR/08_motra.log" run_motra_campaign
+  else
+    log "SKIP motra campaign (missing MOTRA base images)"
+  fi
 fi
 if [[ "$DO_OTSEC" -eq 1 ]]; then
-  run_with_log "otsec" "$LOG_DIR/08_otsec.log" run_otsec_campaign
+  run_with_log "otsec" "$LOG_DIR/09_otsec.log" run_otsec_campaign
 fi
 if [[ "$DO_CERT" -eq 1 ]]; then
-  run_with_log "cert_size" "$LOG_DIR/09_cert_size.log" run_cert_campaign
+  run_with_log "cert_size" "$LOG_DIR/10_cert_size.log" run_cert_campaign
 fi
 if [[ "$DO_FORMAL" -eq 1 ]]; then
-  run_with_log "formal" "$LOG_DIR/10_formal.log" run_formal_checks
+  run_with_log "formal" "$LOG_DIR/11_formal.log" run_formal_checks
 fi
 
 log "All requested steps completed."

@@ -12,51 +12,75 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>. 
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 # Pk-IOTA
 
-This repository contains the code and the dataset for the paper "Pk-IOTA: Blockchain empowered Programmable Data Plane to secure OPC UA communications in Industry 4.0"
+Pk-IOTA is a research prototype for securing OPC UA communications in Industry 4.0 by combining:
+- programmable data-plane validation (P4 switches), and
+- decentralized certificate management workflows built on IOTA.
 
-## Repository Structure
-- **IOTA_src:** contains all the source code to run the certificate transactions on the IOTA ledger; it also contains the source code of smart contracts and the frontend that interacts with it. All the dependencies and guides to run the software and the tests are inside the directory.
-- **Testbed:** Provides a simulation environment for in-network certificate validation of OPC UA certificates.
-- **Test:** Contains test scripts and data to reproduce our results.
+This repository contains both the implementation and the reproducibility artifacts used for overhead evaluation and formal analysis.
+
+## What Is In This Repository
+
+### Top-level layout
+- `IOTA_src/`
+  - IOTA transaction workflows, smart contracts, frontend utilities, and MQTT-related scripts.
+- `testbeds/`
+  - Kathara-based network labs, P4 programs, traffic replay/synthesis pipelines, analyzers, and image build tooling.
+- `tests/`
+  - Result artifacts and plots (existing `IOTA`, `P4` and testbed campaign outputs under `TESTBEDS`).
+- `formal_verification/`
+  - Tamarin models and security property checks.
+- `utils/`
+  - Legacy helper scripts and utility image definitions.
+
+### Testbeds currently maintained
+- `testbeds/Maynard`
+  - Replay-based benchmark using host-split PCAP traces (OPC UA on TCP/8666).
+- `testbeds/motra/simple-water-treatment-plant/kathara-single-dev-p4`
+  - MOTRA reproduction in Kathara with one P4 switch per subnet.
+- `testbeds/ot-security-testbed/kathara-otsec-p4`
+  - OT Security testbed reproduction in Kathara (single L2 domain + one P4 switch).
+- `testbeds/1client_1server`
+  - Synthetic OPC UA scenario for controlled certificate-size overhead sweeps.
+
+## Main Documentation
+- Testbeds overview and execution guide:
+  - [testbeds/README.md](testbeds/README.md)
+
+## Reproducibility Workflow (High Level)
+1. Build or pull required Docker images for the selected lab.
+2. Run paired measurements (`forward` vs `extraction`) with the per-testbed runner.
+3. Run the corresponding analyzer to generate:
+   - `per_run.csv`
+   - `summary.csv`
+   - `report.md`
+4. Store outputs under `tests/TESTBEDS` (default for the all-in-one orchestrator).
 
 ## Prerequisites
-To get started with Pk-IOTA, ensure the following prerequisites are installed on your system:
+- Docker
+- Kathara
+- Python 3
+- `capinfos` (`wireshark-common`)
+- Optional (formal verification): `tamarin-prover`, `maude`
 
-1. **IOTA SDK:**
-   - Install the IOTA SDK by following the [official installation guide](https://docs.iota.org/).
+## Security and Data Notes
+- This repository contains demo/lab material, including sample certificates/keys and test credentials in some subdirectories.
+- Do not reuse these assets in production environments.
+- Before publishing derivatives, verify your branch does not contain sensitive runtime artifacts.
 
-2. **Kathara Framework:**
-   - Install Kathara by following the [official documentation](https://www.kathara.org/).
+## How To Cite
+If you use this repository, please cite our paper!
 
-## Installation
-Clone the repository:
-   ```bash
-   git clone https://github.com/UniboSecurityResearch/Pk-IOTA.git
-   cd Pk-IOTA
-   ```
-
-## Usage
-
-1. Navigate to the `testbed` folder:
-   ```bash
-   cd testbed
-   ```
-
-2. Run Kathara to start the simulation:
-   ```bash
-   kathara lstart
-   ```
-
-3. In the `h1` terminal of Kathara, execute the following command:
-   ```bash
-   python3 ua_client_with_encryption.py
-   ```
-
-### Cite us
-If you find this work interesting and use it in your academic research, please cite our paper!
-
-[![DOI](https://zenodo.org/badge/749721589.svg)](https://doi.org/10.5281/zenodo.14751962)
+### Paper (preprint)
+```bibtex
+@article{rinieri2025pkiota,
+  title   = {Pk-IOTA: Blockchain empowered Programmable Data Plane to secure OPC UA communications in Industry 4.0},
+  author  = {Rinieri, Lorenzo and Gori, Giacomo and Melis, Andrea and Girau, Roberto and Prandini, Marco and Callegati, Franco},
+  journal = {arXiv preprint arXiv:2511.10248},
+  year    = {2025},
+  url     = {https://arxiv.org/abs/2511.10248}
+}
+```

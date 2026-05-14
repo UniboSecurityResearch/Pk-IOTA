@@ -174,3 +174,6 @@ virtualenv/
 # Codex
 .codex/
 .agents/
+
+# Local dependency clones (do not commit)
+testbeds/motra/motra-images/

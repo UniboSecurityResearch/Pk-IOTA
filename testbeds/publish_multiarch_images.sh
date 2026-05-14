@@ -1,0 +1,457 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Build and push multi-arch images (amd64+arm64) to Docker Hub.
+
+Usage:
+  publish_multiarch_images.sh --dockerhub-user USER [options]
+
+Required:
+  --dockerhub-user USER         Docker Hub namespace
+
+Options:
+  --root DIR                    Project root (default: parent of this script)
+  --tag TAG                     Image tag (default: latest)
+  --platforms LIST              Platforms list (default: linux/amd64,linux/arm64)
+  --builder NAME                buildx builder name (default: pkiota-multiarch)
+  --motra-images-dir DIR        Local clone of motra-images repo (optional)
+  --motra-meta-dir DIR          Path to MOTRA meta dir (default: <root>/testbeds/motra/simple-water-treatment-plant/meta)
+
+  --skip-existing               Skip IMAGE:TAG if it already exists on Docker Hub for all requested platforms
+  --skip-base                   Skip tcpreplay / asyncua
+  --skip-otsec-base             Skip OTSEC base images
+  --skip-otsec-wrappers         Skip OTSEC kathara-net wrappers
+  --skip-motra-base             Skip MOTRA base images
+  --skip-motra-wrappers         Skip MOTRA kathara-net wrappers
+  --dry-run                     Print commands only
+  -h, --help                    Show this help
+
+Notes:
+  1) You must run: docker login
+  2) For MOTRA base images you should pass --motra-images-dir with a local
+     checkout of motra-images (single-dev compose remote context can be unstable).
+  3) Image names include the lab name prefix for clarity/reproducibility:
+     maynard-*, oneclient-oneserver-*, motra-*, otsec-*
+  4) --skip-existing checks Docker Hub through docker buildx imagetools inspect.
+     It skips only if all requested platforms are already present in the remote manifest.
+EOF
+}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+DOCKERHUB_USER=""
+TAG="latest"
+PLATFORMS="linux/amd64,linux/arm64"
+BUILDER="pkiota-multiarch"
+MOTRA_IMAGES_DIR=""
+MOTRA_META_DIR=""
+DRY_RUN=0
+SKIP_EXISTING=0
+
+DO_BASE=1
+DO_OTSEC_BASE=1
+DO_OTSEC_WRAP=1
+DO_MOTRA_BASE=1
+DO_MOTRA_WRAP=1
+
+IMG_MAYNARD_TCPREPLAY=""
+IMG_ONECLIENT_ASYNCUA=""
+IMG_OTSEC_INDUSTRIAL=""
+IMG_OTSEC_OPENPLC=""
+IMG_OTSEC_FUXA=""
+IMG_OTSEC_ATTACKER=""
+IMG_OTSEC_SHELLINABOX=""
+IMG_OTSEC_TELEGRAF_WRAP=""
+IMG_OTSEC_INFLUXDB_WRAP=""
+IMG_OTSEC_CHRONOGRAF_WRAP=""
+IMG_OTSEC_KAPACITOR_WRAP=""
+IMG_OTSEC_INDUSTRIAL_WRAP=""
+IMG_OTSEC_OPENPLC_WRAP=""
+IMG_OTSEC_FUXA_WRAP=""
+IMG_OTSEC_ATTACKER_WRAP=""
+IMG_OTSEC_SHELLINABOX_WRAP=""
+IMG_MOTRA_DASHBOARD=""
+IMG_MOTRA_HISTORIAN=""
+IMG_MOTRA_PLC_LOGIC=""
+IMG_MOTRA_WATER_TANK=""
+IMG_MOTRA_PLC_SERVER=""
+IMG_MOTRA_LEVELSENSOR=""
+IMG_MOTRA_VALVE=""
+IMG_MOTRA_DASHBOARD_WRAP=""
+IMG_MOTRA_PLC_SERVER_WRAP=""
+IMG_MOTRA_HISTORIAN_WRAP=""
+IMG_MOTRA_PLC_LOGIC_WRAP=""
+IMG_MOTRA_LEVELSENSOR_WRAP=""
+IMG_MOTRA_WATER_TANK_WRAP=""
+IMG_MOTRA_VALVE_WRAP=""
+
+log() {
+  printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+}
+
+run_cmd() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf '[DRY-RUN] '
+    printf '%q ' "$@"
+    printf '\n'
+  else
+    "$@"
+  fi
+}
+
+trim_spaces() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+remote_image_has_all_requested_platforms() {
+  local image="$1"
+  local inspect_output=""
+  local platform=""
+  local requested_platforms=()
+
+  inspect_output="$(docker buildx imagetools inspect "$image" 2>/dev/null)" || return 1
+
+  IFS=',' read -r -a requested_platforms <<< "$PLATFORMS"
+  for platform in "${requested_platforms[@]}"; do
+    platform="$(trim_spaces "$platform")"
+    [[ -n "$platform" ]] || continue
+
+    if ! grep -Eq "^[[:space:]]*Platform:[[:space:]]+$platform([[:space:]]|$)" <<< "$inspect_output"; then
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+build_push() {
+  local tag_ref="$1"
+  local dockerfile="$2"
+  local context="$3"
+  shift 3
+  local extra=("$@")
+
+  if [[ "$SKIP_EXISTING" -eq 1 ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      log "[DRY-RUN] Would check remote image before build: $tag_ref"
+    elif remote_image_has_all_requested_platforms "$tag_ref"; then
+      log "Skipping existing image with requested platforms: $tag_ref"
+      return 0
+    else
+      log "Remote image missing or incomplete for requested platforms, building: $tag_ref"
+    fi
+  fi
+
+  local cmd=(
+    docker buildx build
+    --builder "$BUILDER"
+    --platform "$PLATFORMS"
+    --push
+    -t "$tag_ref"
+    -f "$dockerfile"
+  )
+
+  local e
+  for e in "${extra[@]}"; do
+    cmd+=("$e")
+  done
+
+  cmd+=("$context")
+  run_cmd "${cmd[@]}"
+}
+
+build_wrapper_from_base() {
+  local base_img="$1"
+  local out_img="$2"
+  local tmp
+  tmp="$(mktemp -d)"
+
+  cat > "$tmp/Dockerfile" <<EOF
+FROM ${base_img}
+RUN set -eux; \
+    if command -v apt-get >/dev/null 2>&1; then \
+      if ! apt-get update; then \
+        sed -ri 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g; s|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list || true; \
+        sed -ri '/stretch-updates/d' /etc/apt/sources.list || true; \
+        printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99archive-no-valid-until; \
+        apt-get -o Acquire::Check-Valid-Until=false update; \
+      fi; \
+      apt-get install -y --no-install-recommends iproute2; \
+      rm -rf /var/lib/apt/lists/*; \
+    elif command -v apk >/dev/null 2>&1; then \
+      apk add --no-cache iproute2; \
+    else \
+      echo "Unsupported base image package manager (need apt-get or apk)"; \
+      exit 1; \
+    fi
+EOF
+
+  build_push "$out_img" "$tmp/Dockerfile" "$tmp"
+  rm -rf "$tmp"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dockerhub-user) DOCKERHUB_USER="${2:-}"; shift 2 ;;
+    --root) ROOT_DIR="${2:-}"; shift 2 ;;
+    --tag) TAG="${2:-}"; shift 2 ;;
+    --platforms) PLATFORMS="${2:-}"; shift 2 ;;
+    --builder) BUILDER="${2:-}"; shift 2 ;;
+    --motra-images-dir) MOTRA_IMAGES_DIR="${2:-}"; shift 2 ;;
+    --motra-meta-dir) MOTRA_META_DIR="${2:-}"; shift 2 ;;
+    --skip-existing) SKIP_EXISTING=1; shift ;;
+    --skip-base) DO_BASE=0; shift ;;
+    --skip-otsec-base) DO_OTSEC_BASE=0; shift ;;
+    --skip-otsec-wrappers) DO_OTSEC_WRAP=0; shift ;;
+    --skip-motra-base) DO_MOTRA_BASE=0; shift ;;
+    --skip-motra-wrappers) DO_MOTRA_WRAP=0; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+if [[ -z "$DOCKERHUB_USER" ]]; then
+  echo "--dockerhub-user is required." >&2
+  usage
+  exit 1
+fi
+
+IMG_MAYNARD_TCPREPLAY="$DOCKERHUB_USER/tcpreplay:$TAG"
+IMG_ONECLIENT_ASYNCUA="$DOCKERHUB_USER/asyncua:$TAG"
+
+IMG_OTSEC_INDUSTRIAL="$DOCKERHUB_USER/otsec-industrial-process:$TAG"
+IMG_OTSEC_OPENPLC="$DOCKERHUB_USER/otsec-openplc:$TAG"
+IMG_OTSEC_FUXA="$DOCKERHUB_USER/otsec-fuxa:$TAG"
+IMG_OTSEC_ATTACKER="$DOCKERHUB_USER/otsec-attacker:$TAG"
+IMG_OTSEC_SHELLINABOX="$DOCKERHUB_USER/otsec-shellinabox:$TAG"
+
+IMG_OTSEC_TELEGRAF_WRAP="$DOCKERHUB_USER/otsec-telegraf-kathara-net:$TAG"
+IMG_OTSEC_INFLUXDB_WRAP="$DOCKERHUB_USER/otsec-influxdb-kathara-net:$TAG"
+IMG_OTSEC_CHRONOGRAF_WRAP="$DOCKERHUB_USER/otsec-chronograf-kathara-net:$TAG"
+IMG_OTSEC_KAPACITOR_WRAP="$DOCKERHUB_USER/otsec-kapacitor-kathara-net:$TAG"
+IMG_OTSEC_INDUSTRIAL_WRAP="$DOCKERHUB_USER/otsec-industrial-process-kathara-net:$TAG"
+IMG_OTSEC_OPENPLC_WRAP="$DOCKERHUB_USER/otsec-openplc-kathara-net:$TAG"
+IMG_OTSEC_FUXA_WRAP="$DOCKERHUB_USER/otsec-fuxa-kathara-net:$TAG"
+IMG_OTSEC_ATTACKER_WRAP="$DOCKERHUB_USER/otsec-attacker-kathara-net:$TAG"
+IMG_OTSEC_SHELLINABOX_WRAP="$DOCKERHUB_USER/otsec-shellinabox-kathara-net:$TAG"
+
+IMG_MOTRA_DASHBOARD="$DOCKERHUB_USER/motra-dashboard:$TAG"
+IMG_MOTRA_HISTORIAN="$DOCKERHUB_USER/motra-historian:$TAG"
+IMG_MOTRA_PLC_LOGIC="$DOCKERHUB_USER/motra-plc-logic:$TAG"
+IMG_MOTRA_WATER_TANK="$DOCKERHUB_USER/motra-water-tank-simulation:$TAG"
+IMG_MOTRA_PLC_SERVER="$DOCKERHUB_USER/motra-plc-server:$TAG"
+IMG_MOTRA_LEVELSENSOR="$DOCKERHUB_USER/motra-levelsensor-server:$TAG"
+IMG_MOTRA_VALVE="$DOCKERHUB_USER/motra-valve-server:$TAG"
+
+IMG_MOTRA_DASHBOARD_WRAP="$DOCKERHUB_USER/motra-dashboard-kathara-net:$TAG"
+IMG_MOTRA_PLC_SERVER_WRAP="$DOCKERHUB_USER/motra-plc-server-kathara-net:$TAG"
+IMG_MOTRA_HISTORIAN_WRAP="$DOCKERHUB_USER/motra-historian-kathara-net:$TAG"
+IMG_MOTRA_PLC_LOGIC_WRAP="$DOCKERHUB_USER/motra-plc-logic-kathara-net:$TAG"
+IMG_MOTRA_LEVELSENSOR_WRAP="$DOCKERHUB_USER/motra-levelsensor-server-kathara-net:$TAG"
+IMG_MOTRA_WATER_TANK_WRAP="$DOCKERHUB_USER/motra-water-tank-simulation-kathara-net:$TAG"
+IMG_MOTRA_VALVE_WRAP="$DOCKERHUB_USER/motra-valve-server-kathara-net:$TAG"
+
+if [[ -z "$MOTRA_META_DIR" ]]; then
+  MOTRA_META_DIR="$ROOT_DIR/testbeds/motra/simple-water-treatment-plant/meta"
+fi
+
+if [[ -z "$MOTRA_IMAGES_DIR" ]]; then
+  DEFAULT_MOTRA_IMAGES_DIR="$ROOT_DIR/testbeds/motra/motra-images"
+  if [[ -d "$DEFAULT_MOTRA_IMAGES_DIR" ]]; then
+    MOTRA_IMAGES_DIR="$DEFAULT_MOTRA_IMAGES_DIR"
+  fi
+fi
+
+if [[ "$DO_MOTRA_BASE" -eq 1 && -z "$MOTRA_IMAGES_DIR" ]]; then
+  log "MOTRA base build requested but --motra-images-dir not provided -> disabling MOTRA base/wrappers."
+  DO_MOTRA_BASE=0
+  DO_MOTRA_WRAP=0
+fi
+
+if [[ "$DO_MOTRA_BASE" -eq 1 ]]; then
+  [[ -d "$MOTRA_IMAGES_DIR" ]] || { echo "Missing MOTRA images dir: $MOTRA_IMAGES_DIR" >&2; exit 1; }
+  [[ -d "$MOTRA_META_DIR" ]] || { echo "Missing MOTRA meta dir: $MOTRA_META_DIR" >&2; exit 1; }
+fi
+
+if [[ "$DO_OTSEC_BASE" -eq 1 ]]; then
+  for req in \
+    "$ROOT_DIR/testbeds/ot-security-testbed/industrial-process/industrial-process.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/PLC/OpenPLC.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/attacker/attacker.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/attacker/shellinabox.Dockerfile"; do
+    [[ -f "$req" ]] || { echo "Missing file: $req" >&2; exit 1; }
+  done
+fi
+
+if [[ "$DO_BASE" -eq 1 ]]; then
+  [[ -f "$ROOT_DIR/testbeds/images/tcpreplay/Dockerfile" ]] || { echo "Missing tcpreplay Dockerfile" >&2; exit 1; }
+  [[ -f "$ROOT_DIR/testbeds/images/asyncua/Dockerfile" ]] || { echo "Missing asyncua Dockerfile" >&2; exit 1; }
+fi
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+  docker buildx inspect "$BUILDER" >/dev/null 2>&1 || docker buildx create --name "$BUILDER" --driver docker-container --use
+  docker buildx use "$BUILDER"
+  docker buildx inspect --bootstrap >/dev/null
+fi
+
+log "Docker Hub namespace: $DOCKERHUB_USER"
+log "Tag: $TAG"
+log "Platforms: $PLATFORMS"
+log "Builder: $BUILDER"
+log "Skip existing: $SKIP_EXISTING"
+
+if [[ "$DO_BASE" -eq 1 ]]; then
+  log "Publishing base images (tcpreplay/asyncua)"
+
+  build_push \
+    "$IMG_MAYNARD_TCPREPLAY" \
+    "$ROOT_DIR/testbeds/images/tcpreplay/Dockerfile" \
+    "$ROOT_DIR/testbeds/images/tcpreplay"
+
+  build_push \
+    "$IMG_ONECLIENT_ASYNCUA" \
+    "$ROOT_DIR/testbeds/images/asyncua/Dockerfile" \
+    "$ROOT_DIR/testbeds/images/asyncua"
+fi
+
+if [[ "$DO_OTSEC_BASE" -eq 1 ]]; then
+  log "Publishing OTSEC base images"
+
+  build_push \
+    "$IMG_OTSEC_INDUSTRIAL" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/industrial-process/industrial-process.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/industrial-process"
+
+  build_push \
+    "$IMG_OTSEC_OPENPLC" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/PLC/OpenPLC.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/PLC"
+
+  build_push \
+    "$IMG_OTSEC_FUXA" \
+    "Dockerfile" \
+    "https://github.com/vembacher/FUXA.git#d85ef526f234dee7194b56a7de7902050202a950"
+
+  build_push \
+    "$IMG_OTSEC_ATTACKER" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/attacker/attacker.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/attacker"
+
+  build_push \
+    "$IMG_OTSEC_SHELLINABOX" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/attacker/shellinabox.Dockerfile" \
+    "$ROOT_DIR/testbeds/ot-security-testbed/attacker"
+fi
+
+if [[ "$DO_OTSEC_WRAP" -eq 1 ]]; then
+  log "Publishing OTSEC kathara-net wrapper images"
+
+  build_wrapper_from_base "telegraf:1.21.4" "$IMG_OTSEC_TELEGRAF_WRAP"
+  build_wrapper_from_base "influxdb:1.8.10" "$IMG_OTSEC_INFLUXDB_WRAP"
+  build_wrapper_from_base "chronograf:1.9.4" "$IMG_OTSEC_CHRONOGRAF_WRAP"
+  build_wrapper_from_base "kapacitor:1.6.4" "$IMG_OTSEC_KAPACITOR_WRAP"
+
+  build_wrapper_from_base "$IMG_OTSEC_INDUSTRIAL" "$IMG_OTSEC_INDUSTRIAL_WRAP"
+  build_wrapper_from_base "$IMG_OTSEC_OPENPLC" "$IMG_OTSEC_OPENPLC_WRAP"
+  build_wrapper_from_base "$IMG_OTSEC_FUXA" "$IMG_OTSEC_FUXA_WRAP"
+  build_wrapper_from_base "$IMG_OTSEC_ATTACKER" "$IMG_OTSEC_ATTACKER_WRAP"
+  build_wrapper_from_base "$IMG_OTSEC_SHELLINABOX" "$IMG_OTSEC_SHELLINABOX_WRAP"
+fi
+
+if [[ "$DO_MOTRA_BASE" -eq 1 ]]; then
+  log "Publishing MOTRA base images from local motra-images clone"
+
+  MOTRA_NODE_CTX="$MOTRA_IMAGES_DIR/opcua/server/nodejs-node-opcua/latest"
+  MOTRA_DASH_CTX="$MOTRA_IMAGES_DIR/opcua/dashboard/python-opcua-asyncio/latest"
+  MOTRA_HIST_CTX="$MOTRA_IMAGES_DIR/opcua/historian/python-opcua-asyncio/latest"
+  MOTRA_LOGIC_CTX="$MOTRA_IMAGES_DIR/opcua/plc-logic/python-opcua-asyncio/latest"
+  MOTRA_TANK_CTX="$MOTRA_IMAGES_DIR/opcua/water-tank-simulation/python-opcua-asyncio/latest"
+
+  for req in \
+    "$MOTRA_NODE_CTX/Dockerfile" \
+    "$MOTRA_DASH_CTX/Dockerfile" \
+    "$MOTRA_HIST_CTX/Dockerfile" \
+    "$MOTRA_LOGIC_CTX/Dockerfile" \
+    "$MOTRA_TANK_CTX/Dockerfile"; do
+    [[ -f "$req" ]] || { echo "Missing MOTRA Dockerfile: $req" >&2; exit 1; }
+  done
+
+  build_push \
+    "$IMG_MOTRA_DASHBOARD" \
+    "$MOTRA_DASH_CTX/Dockerfile" \
+    "$MOTRA_DASH_CTX" \
+    "--build-context=container_context=$MOTRA_DASH_CTX"
+
+  build_push \
+    "$IMG_MOTRA_HISTORIAN" \
+    "$MOTRA_HIST_CTX/Dockerfile" \
+    "$MOTRA_HIST_CTX" \
+    "--build-context=container_context=$MOTRA_HIST_CTX"
+
+  build_push \
+    "$IMG_MOTRA_PLC_LOGIC" \
+    "$MOTRA_LOGIC_CTX/Dockerfile" \
+    "$MOTRA_LOGIC_CTX" \
+    "--build-context=container_context=$MOTRA_LOGIC_CTX"
+
+  build_push \
+    "$IMG_MOTRA_WATER_TANK" \
+    "$MOTRA_TANK_CTX/Dockerfile" \
+    "$MOTRA_TANK_CTX" \
+    "--build-context=container_context=$MOTRA_TANK_CTX"
+
+  build_push \
+    "$IMG_MOTRA_PLC_SERVER" \
+    "$MOTRA_NODE_CTX/Dockerfile" \
+    "$MOTRA_NODE_CTX" \
+    "--build-arg=NODESET_MODEL=PLC.NodeSet2.xml" \
+    "--build-context=container_context=$MOTRA_NODE_CTX" \
+    "--build-context=nodeset_context=$MOTRA_META_DIR/demo-nodeset2" \
+    "--build-context=companion_context=$MOTRA_META_DIR/companion-specifications" \
+    "--build-context=configuration_context=$MOTRA_META_DIR/server-configuration"
+
+  build_push \
+    "$IMG_MOTRA_LEVELSENSOR" \
+    "$MOTRA_NODE_CTX/Dockerfile" \
+    "$MOTRA_NODE_CTX" \
+    "--build-arg=NODESET_MODEL=Tank.NodeSet2.xml" \
+    "--build-context=container_context=$MOTRA_NODE_CTX" \
+    "--build-context=nodeset_context=$MOTRA_META_DIR/demo-nodeset2" \
+    "--build-context=companion_context=$MOTRA_META_DIR/companion-specifications" \
+    "--build-context=configuration_context=$MOTRA_META_DIR/server-configuration"
+
+  build_push \
+    "$IMG_MOTRA_VALVE" \
+    "$MOTRA_NODE_CTX/Dockerfile" \
+    "$MOTRA_NODE_CTX" \
+    "--build-arg=NODESET_MODEL=Valve.NodeSet2.xml" \
+    "--build-context=container_context=$MOTRA_NODE_CTX" \
+    "--build-context=nodeset_context=$MOTRA_META_DIR/demo-nodeset2" \
+    "--build-context=companion_context=$MOTRA_META_DIR/companion-specifications" \
+    "--build-context=configuration_context=$MOTRA_META_DIR/server-configuration"
+fi
+
+if [[ "$DO_MOTRA_WRAP" -eq 1 && "$DO_MOTRA_BASE" -eq 1 ]]; then
+  log "Publishing MOTRA kathara-net wrapper images"
+
+  build_wrapper_from_base "$IMG_MOTRA_DASHBOARD" "$IMG_MOTRA_DASHBOARD_WRAP"
+  build_wrapper_from_base "$IMG_MOTRA_PLC_SERVER" "$IMG_MOTRA_PLC_SERVER_WRAP"
+  build_wrapper_from_base "$IMG_MOTRA_HISTORIAN" "$IMG_MOTRA_HISTORIAN_WRAP"
+  build_wrapper_from_base "$IMG_MOTRA_PLC_LOGIC" "$IMG_MOTRA_PLC_LOGIC_WRAP"
+  build_wrapper_from_base "$IMG_MOTRA_LEVELSENSOR" "$IMG_MOTRA_LEVELSENSOR_WRAP"
+  build_wrapper_from_base "$IMG_MOTRA_WATER_TANK" "$IMG_MOTRA_WATER_TANK_WRAP"
+  build_wrapper_from_base "$IMG_MOTRA_VALVE" "$IMG_MOTRA_VALVE_WRAP"
+fi
+
+log "Done."
+log "Example image refs for lab.conf:"
+echo "  $IMG_MAYNARD_TCPREPLAY"
+echo "  $IMG_ONECLIENT_ASYNCUA"
+echo "  $IMG_MOTRA_DASHBOARD_WRAP"
+echo "  $IMG_OTSEC_OPENPLC_WRAP"

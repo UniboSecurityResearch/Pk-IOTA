@@ -201,20 +201,24 @@
 #    limitations under the License.
 
 FROM kalilinux/kali-rolling
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 RUN apt-get update && \
     apt-get install --no-install-recommends --no-install-suggests -y \
-    sudo \
-    net-tools \
-    dsniff \
-    nmap \
-    ca-certificates \
-    vim nano \
-    iptables \
-    iputils-ping \
-    zsh \
-    ssh
+      systemd-standalone-sysusers \
+      sudo \
+      net-tools \
+      dsniff \
+      nmap \
+      ca-certificates \
+      vim nano \
+      iptables \
+      iputils-ping \
+      zsh \
+      openssh-client \
+      openssh-server && \
+    rm -rf /var/lib/apt/lists/*
 
 # install python3.6 which is required by NetfilterQueue (incompatible with python3.7+)
 #RUN apt-get update && \
