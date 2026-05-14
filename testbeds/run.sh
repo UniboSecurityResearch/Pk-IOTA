@@ -3,10 +3,10 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Run all overhead campaigns and formal checks on a remote server.
+Run all overhead campaigns and formal checks.
 
 Usage:
-  run_remote_campaigns.sh [options]
+  run.sh [options]
 
 Options:
   --root DIR                Project root (default: parent of this script)
@@ -14,14 +14,16 @@ Options:
   --profile NAME            main | smoke (default: main)
   --tag NAME                Output suffix tag (default: profile name)
   --status-only             Print runtime/results status and exit
-  --tcpreplay-image IMG     Image for Maynard replay hosts (default: loriringhio97/maynard-tcpreplay:latest)
-  --asyncua-image IMG       Image for 1client_1server hosts (default: loriringhio97/oneclient-oneserver-asyncua:latest)
+  --tcpreplay-image IMG     Image for Maynard replay hosts (default: loriringhio97/tcpreplay:latest)
+  --asyncua-image IMG       Image for 1client_1server hosts (default: loriringhio97/asyncua:latest)
   --wireshark-image IMG     Common wireshark image (default: lscr.io/linuxserver/wireshark)
   --set-lab-images          Rewrite lab.conf image refs for Maynard + 1client_1server
 
   --skip-preflight          Skip tool/version checks
   --skip-clean              Skip preventive kathara lclean on all labs
   --skip-pull               Skip docker pull of common images
+  --build-motra             Build MOTRA wrapper images locally
+  --build-otsec             Build OTSEC images locally
   --skip-build-motra        Skip MOTRA wrapper image build
   --skip-build-otsec        Skip OTSEC certificate/image build
   --skip-maynard            Skip Maynard campaign
@@ -46,12 +48,12 @@ Options:
   -h, --help                Show this help
 
 Examples:
-  ./testbeds/run_remote_campaigns.sh --profile smoke --tag smoke_ci
-  ./testbeds/run_remote_campaigns.sh --profile smoke --set-lab-images \
-    --tcpreplay-image myuser/maynard-tcpreplay:v1 \
-    --asyncua-image myuser/oneclient-oneserver-asyncua:v1
-  ./testbeds/run_remote_campaigns.sh --profile main --skip-formal
-  ./testbeds/run_remote_campaigns.sh --status-only
+  ./testbeds/run.sh --profile smoke --tag smoke_ci
+  ./testbeds/run.sh --profile smoke --set-lab-images \
+    --tcpreplay-image myuser/tcpreplay:v1 \
+    --asyncua-image myuser/asyncua:v1
+  ./testbeds/run.sh --profile main --skip-formal
+  ./testbeds/run.sh --status-only
 EOF
 }
 
@@ -65,8 +67,8 @@ STATUS_ONLY=0
 DO_PREFLIGHT=1
 DO_CLEAN=1
 DO_PULL=1
-DO_BUILD_MOTRA=1
-DO_BUILD_OTSEC=1
+DO_BUILD_MOTRA=0
+DO_BUILD_OTSEC=0
 DO_MAYNARD=1
 DO_MOTRA=1
 DO_OTSEC=1
@@ -74,11 +76,9 @@ DO_CERT=1
 DO_FORMAL=1
 DO_SET_LAB_IMAGES=0
 
-TCPREPLAY_IMAGE="loriringhio97/maynard-tcpreplay:latest"
-ASYNCUA_IMAGE="loriringhio97/oneclient-oneserver-asyncua:latest"
+TCPREPLAY_IMAGE="loriringhio97/tcpreplay:latest"
+ASYNCUA_IMAGE="loriringhio97/asyncua:latest"
 WIRESHARK_IMAGE="lscr.io/linuxserver/wireshark"
-
-MOTRA_BASE_READY=1
 
 MAYNARD_RUNS=""
 MAYNARD_TIMEOUT=""
@@ -254,6 +254,66 @@ run_pull_common_images() {
   done
 }
 
+extract_lab_images() {
+  local lab_conf="$1"
+  awk -F'"' '/\[image\]=/ {print $2}' "$lab_conf" | sed '/^$/d' | sort -u
+}
+
+ensure_image_available() {
+  local image="$1"
+  if docker image inspect "$image" >/dev/null 2>&1; then
+    return 0
+  fi
+  if docker pull "$image" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+check_lab_images() {
+  local lab_name="$1"
+  local lab_conf="$2"
+  local missing=0
+
+  log "Checking container images for $lab_name ($lab_conf)"
+  mapfile -t imgs < <(extract_lab_images "$lab_conf")
+  local img
+  for img in "${imgs[@]}"; do
+    if ensure_image_available "$img"; then
+      echo "  - OK: $img"
+    else
+      echo "  - MISSING (local + Docker Hub): $img" >&2
+      missing=1
+    fi
+  done
+
+  if [[ "$missing" -ne 0 ]]; then
+    return 1
+  fi
+}
+
+run_check_required_images() {
+  local failed=0
+
+  if [[ "$DO_MAYNARD" -eq 1 ]]; then
+    check_lab_images "Maynard" "$ROOT_DIR/testbeds/Maynard/lab.conf" || failed=1
+  fi
+  if [[ "$DO_MOTRA" -eq 1 ]]; then
+    check_lab_images "MOTRA" "$ROOT_DIR/testbeds/motra/simple-water-treatment-plant/kathara-single-dev-p4/lab.conf" || failed=1
+  fi
+  if [[ "$DO_OTSEC" -eq 1 ]]; then
+    check_lab_images "OTSEC" "$ROOT_DIR/testbeds/ot-security-testbed/kathara-otsec-p4/lab.conf" || failed=1
+  fi
+  if [[ "$DO_CERT" -eq 1 ]]; then
+    check_lab_images "1client_1server" "$ROOT_DIR/testbeds/1client_1server/lab.conf" || failed=1
+  fi
+
+  if [[ "$failed" -ne 0 ]]; then
+    echo "One or more required images are missing. Push/pull them or enable local build flags." >&2
+    return 1
+  fi
+}
+
 run_set_lab_images() {
   local script="$ROOT_DIR/testbeds/set_lab_images.sh"
   require_file "$script"
@@ -289,9 +349,8 @@ run_build_motra() {
     for img in "${missing[@]}"; do
       echo "  - $img" >&2
     done
-    echo "MOTRA wrapper build will be skipped." >&2
-    echo "Build/pull base images first, then rerun to include MOTRA." >&2
-    MOTRA_BASE_READY=0
+    echo "MOTRA wrapper build will fail unless these base images are available." >&2
+    echo "Build/pull base images first, or skip --build-motra." >&2
     return 0
   fi
 
@@ -450,6 +509,8 @@ while [[ $# -gt 0 ]]; do
     --skip-preflight) DO_PREFLIGHT=0; shift ;;
     --skip-clean) DO_CLEAN=0; shift ;;
     --skip-pull) DO_PULL=0; shift ;;
+    --build-motra) DO_BUILD_MOTRA=1; shift ;;
+    --build-otsec) DO_BUILD_OTSEC=1; shift ;;
     --skip-build-motra) DO_BUILD_MOTRA=0; shift ;;
     --skip-build-otsec) DO_BUILD_OTSEC=0; shift ;;
     --skip-maynard) DO_MAYNARD=0; shift ;;
@@ -542,15 +603,12 @@ fi
 if [[ "$DO_BUILD_OTSEC" -eq 1 ]]; then
   run_with_log "build_otsec" "$LOG_DIR/06_build_otsec.log" run_build_otsec
 fi
+run_with_log "check_required_images" "$LOG_DIR/06b_check_images.log" run_check_required_images
 if [[ "$DO_MAYNARD" -eq 1 ]]; then
   run_with_log "maynard" "$LOG_DIR/07_maynard.log" run_maynard_campaign
 fi
 if [[ "$DO_MOTRA" -eq 1 ]]; then
-  if [[ "$MOTRA_BASE_READY" -eq 1 ]]; then
-    run_with_log "motra" "$LOG_DIR/08_motra.log" run_motra_campaign
-  else
-    log "SKIP motra campaign (missing MOTRA base images)"
-  fi
+  run_with_log "motra" "$LOG_DIR/08_motra.log" run_motra_campaign
 fi
 if [[ "$DO_OTSEC" -eq 1 ]]; then
   run_with_log "otsec" "$LOG_DIR/09_otsec.log" run_otsec_campaign
@@ -564,4 +622,4 @@ fi
 
 log "All requested steps completed."
 log "Tip: run status check with:"
-echo "  $SCRIPT_DIR/run_remote_campaigns.sh --root \"$ROOT_DIR\" --results-dir \"$RESULTS_DIR\" --status-only"
+echo "  $SCRIPT_DIR/run.sh --root \"$ROOT_DIR\" --results-dir \"$RESULTS_DIR\" --status-only"

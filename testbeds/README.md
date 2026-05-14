@@ -19,7 +19,8 @@ This document explains the available testbeds, required images, and the exact co
 
 ## Shared Tooling in `testbeds/`
 - `run.sh`
-  - All-in-one orchestrator (name is historical; it works for local execution too).
+  - All-in-one orchestrator for local campaigns.
+  - By default it does not build MOTRA/OTSEC images; it checks required images from each `lab.conf` and pulls them if available.
 - `publish_multiarch_images.sh`
   - Builds and pushes multi-arch images (`amd64`, `arm64`).
 - `set_lab_images.sh`
@@ -138,10 +139,20 @@ Smoke run:
 ./testbeds/run.sh --root "$PWD" --profile smoke --tag smoke
 ```
 
+Enable local image builds only when needed:
+```bash
+./testbeds/run.sh --root "$PWD" --profile smoke --build-motra --build-otsec
+```
+
 ## Optional: Publish Multi-Arch Images
 ```bash
 docker login
 ./testbeds/publish_multiarch_images.sh --root "$PWD" --dockerhub-user <user> --tag v1
+```
+
+The publish script now skips already published tags by default and does not build base images unless explicitly requested:
+```bash
+./testbeds/publish_multiarch_images.sh --root "$PWD" --dockerhub-user <user> --tag v1 --with-base --with-otsec-base --with-motra-base
 ```
 
 Then rewrite `lab.conf` references:
