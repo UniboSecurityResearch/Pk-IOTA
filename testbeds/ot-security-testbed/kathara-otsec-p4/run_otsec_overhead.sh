@@ -118,6 +118,7 @@ declare -A SWITCH_PORTS=(
   [s1]=9
 )
 declare -a CAPTURE_JOBS=()
+declare -a STIM_JOBS=()
 CAPTURE_MODE_USED="unknown"
 
 cleanup() {
@@ -126,6 +127,9 @@ cleanup() {
     kathara exec -d "$LAB_DIR" "$sw" -- pkill tcpdump >/dev/null 2>&1 || true
   done
   for pid in "${CAPTURE_JOBS[@]:-}"; do
+    wait "$pid" >/dev/null 2>&1 || true
+  done
+  for pid in "${STIM_JOBS[@]:-}"; do
     wait "$pid" >/dev/null 2>&1 || true
   done
   kathara lclean -d "$LAB_DIR" >/dev/null 2>&1 || true
@@ -300,27 +304,59 @@ sleep_with_progress() {
 
 stimulate_traffic() {
   echo "  phase: stimulate OPC UA traffic (telegraf --once + tcp probes)"
-  # Forced collection round from telegraf.
-  kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
-    "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+  STIM_JOBS=()
 
-  # Force TCP/4840 attempts across the switch even if OPC UA app-level polling is idle.
-  kathara exec -d "$LAB_DIR" attacker -- sh -lc '
-    {
-      echo "[stim] start $(date -Iseconds)"
-      i=0
-      while [ "$i" -lt 40 ]; do
-        if command -v nc >/dev/null 2>&1; then
-          nc -z -w 1 openplc 4840 >/dev/null 2>&1 || true
-        elif command -v bash >/dev/null 2>&1; then
-          bash -lc "exec 3<>/dev/tcp/openplc/4840; exec 3>&-; exec 3<&-" >/dev/null 2>&1 || true
-        fi
-        i=$((i + 1))
-        sleep 1
-      done
-      echo "[stim] end $(date -Iseconds)"
-    } >/shared/tcp_stimulate.log 2>&1
-  ' >/dev/null 2>&1 || true
+  (
+    if command -v timeout >/dev/null 2>&1; then
+      timeout 45s kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
+        "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+    else
+      kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
+        "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+    fi
+  ) &
+  STIM_JOBS+=("$!")
+
+  (
+    if command -v timeout >/dev/null 2>&1; then
+      timeout 90s kathara exec -d "$LAB_DIR" attacker -- sh -lc '
+        {
+          echo "[stim] start $(date -Iseconds)"
+          i=0
+          while [ "$i" -lt 40 ]; do
+            if command -v nc >/dev/null 2>&1; then
+              nc -z -w 1 openplc 4840 >/dev/null 2>&1 || true
+            elif command -v bash >/dev/null 2>&1; then
+              bash -lc "exec 3<>/dev/tcp/openplc/4840; exec 3>&-; exec 3<&-" >/dev/null 2>&1 || true
+            fi
+            i=$((i + 1))
+            sleep 1
+          done
+          echo "[stim] end $(date -Iseconds)"
+        } >/shared/tcp_stimulate.log 2>&1
+      ' >/dev/null 2>&1 || true
+    else
+      kathara exec -d "$LAB_DIR" attacker -- sh -lc '
+        {
+          echo "[stim] start $(date -Iseconds)"
+          i=0
+          while [ "$i" -lt 40 ]; do
+            if command -v nc >/dev/null 2>&1; then
+              nc -z -w 1 openplc 4840 >/dev/null 2>&1 || true
+            elif command -v bash >/dev/null 2>&1; then
+              bash -lc "exec 3<>/dev/tcp/openplc/4840; exec 3>&-; exec 3<&-" >/dev/null 2>&1 || true
+            fi
+            i=$((i + 1))
+            sleep 1
+          done
+          echo "[stim] end $(date -Iseconds)"
+        } >/shared/tcp_stimulate.log 2>&1
+      ' >/dev/null 2>&1 || true
+    fi
+  ) &
+  STIM_JOBS+=("$!")
+
+  echo "  stimulation launched in background"
 }
 
 set_variant() {
@@ -399,7 +435,6 @@ run_variant_once() {
   fi
   if (( STIMULATE == 1 )); then
     stimulate_traffic
-    sleep 2
   fi
   sleep_with_progress "$DURATION_SEC"
   echo "  stopping captures"
