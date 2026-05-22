@@ -192,7 +192,8 @@ RUN set -eux; \
     else \
       echo "Unsupported base image package manager (need apt-get or apk)"; \
       exit 1; \
-    fi
+    fi; \
+    if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi
 EOF
 
   build_push "$out_img" "$tmp/Dockerfile" "$tmp"

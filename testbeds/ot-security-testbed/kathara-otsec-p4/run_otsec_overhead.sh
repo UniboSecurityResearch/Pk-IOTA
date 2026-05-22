@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  run_otsec_overhead.sh [--lab-dir DIR] [--runs N] [--variant V] [--out-dir DIR] [--duration-sec SEC] [--warmup-sec SEC] [--start-timeout SEC]
+  run_otsec_overhead.sh [--lab-dir DIR] [--runs N] [--variant V] [--out-dir DIR] [--duration-sec SEC] [--warmup-sec SEC] [--start-timeout SEC] [--stimulate]
 
 Options:
   --lab-dir DIR       Path to OT Security Kathara lab (default: directory of this script)
@@ -14,6 +14,7 @@ Options:
   --duration-sec SEC  Capture duration per variant run (default: 3600)
   --warmup-sec SEC    Wait after lstart before capture starts (default: 30)
   --start-timeout SEC Maximum time allowed for kathara lstart (default: 180)
+  --stimulate         Actively trigger OPC UA polling from telegraf before capture
   -h, --help          Show this help
 
 Output layout:
@@ -31,6 +32,7 @@ OUT_DIR=""
 DURATION_SEC=3600
 WARMUP_SEC=30
 START_TIMEOUT_SEC=180
+STIMULATE=0
 PORT=4840
 
 while [[ $# -gt 0 ]]; do
@@ -42,6 +44,7 @@ while [[ $# -gt 0 ]]; do
     --duration-sec) DURATION_SEC="${2:-}"; shift 2 ;;
     --warmup-sec) WARMUP_SEC="${2:-}"; shift 2 ;;
     --start-timeout) START_TIMEOUT_SEC="${2:-}"; shift 2 ;;
+    --stimulate) STIMULATE=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
   esac
@@ -148,11 +151,25 @@ running_tcpdump_processes() {
   local sw
   for sw in "${SWITCHES[@]}"; do
     local c
-    c="$(kathara exec -d "$LAB_DIR" "$sw" -- sh -lc "pgrep -fc tcpdump || true" 2>/dev/null | tail -n1 | tr -dc '0-9')"
+    c="$(kathara exec -d "$LAB_DIR" "$sw" -- sh -lc "pgrep -xc tcpdump || true" 2>/dev/null | tail -n1 | tr -dc '0-9')"
     c="${c:-0}"
     total=$((total + c))
   done
   echo "$total"
+}
+
+shared_has_pcap_header_for_dir() {
+  local dir="$1"
+  local f
+  for sw in "${SWITCHES[@]}"; do
+    for f in "$LAB_DIR/shared"/${sw}_eth*_"${dir}".pcap; do
+      [[ -f "$f" ]] || continue
+      if [[ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -ge 24 ]]; then
+        return 0
+      fi
+    done
+  done
+  return 1
 }
 
 start_captures_with_mode() {
@@ -186,7 +203,9 @@ start_captures_with_mode() {
     waited=$((waited + 2))
     local running
     running="$(running_tcpdump_processes)"
-    if [[ "$running" =~ ^[0-9]+$ ]] && (( running >= expected )); then
+    if [[ "$running" =~ ^[0-9]+$ ]] && (( running >= expected )) \
+      && shared_has_pcap_header_for_dir "in" \
+      && shared_has_pcap_header_for_dir "out"; then
       CAPTURE_MODE_USED="$mode"
       return 0
     fi
@@ -278,6 +297,13 @@ sleep_with_progress() {
   done
 }
 
+stimulate_traffic() {
+  echo "  phase: stimulate OPC UA traffic (telegraf --once)"
+  # Run one forced collection round; ignore failure but log it.
+  kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
+    "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+}
+
 set_variant() {
   local v="$1"
   "$LAB_DIR/set_p4_variant.sh" "$v"
@@ -345,13 +371,16 @@ run_variant_once() {
     echo "  warmup ${WARMUP_SEC}s"
     sleep "$WARMUP_SEC"
   fi
-
   echo "  starting captures on switch s1 (tcp/$PORT)"
   if ! start_captures; then
     echo "Failed to start captures on s1 (both capture modes failed)." >&2
     echo "Inspect shared tcpdump logs under: $LAB_DIR/shared/s1_eth*_*.tcpdump.log" >&2
     kathara lclean -d "$LAB_DIR" >/dev/null 2>&1 || true
     return 1
+  fi
+  if (( STIMULATE == 1 )); then
+    stimulate_traffic
+    sleep 2
   fi
   sleep_with_progress "$DURATION_SEC"
   echo "  stopping captures"

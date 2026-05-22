@@ -19,6 +19,7 @@ RUN set -eux; \
       apt-get -o Acquire::Check-Valid-Until=false update; \
     fi; \
     apt-get install -y --no-install-recommends iproute2; \
+    if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi; \
     rm -rf /var/lib/apt/lists/*
 EOD
   docker build -t "$tag" "$TMP_DIR"
