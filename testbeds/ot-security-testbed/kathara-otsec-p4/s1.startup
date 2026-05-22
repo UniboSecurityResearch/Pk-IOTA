@@ -1,9 +1,45 @@
-p4c active.p4
+#!/bin/sh
+set -eu
+
+LOG_FILE="/shared/s1.log"
+: > "$LOG_FILE"
+
+echo "[s1.startup] compiling active.p4" >>"$LOG_FILE"
+if ! p4c active.p4 >>"$LOG_FILE" 2>&1; then
+  echo "[s1.startup] ERROR: p4c failed" >>"$LOG_FILE"
+  exit 1
+fi
+
+echo "[s1.startup] starting simple_switch" >>"$LOG_FILE"
 simple_switch \
   -i 1@eth0 -i 2@eth1 -i 3@eth2 -i 4@eth3 -i 5@eth4 \
   -i 6@eth5 -i 7@eth6 -i 8@eth7 -i 9@eth8 \
-  --log-console active.json > /shared/s1.log 2>&1 &
+  --log-console active.json >>"$LOG_FILE" 2>&1 &
 
-while ! pgrep simple_switch >/dev/null; do sleep 1; done
-until simple_switch_CLI <<< "help"; do sleep 1; done
-simple_switch_CLI <<< "$(cat commands.txt)"
+wait_sec=0
+while ! pgrep simple_switch >/dev/null 2>&1; do
+  sleep 1
+  wait_sec=$((wait_sec + 1))
+  if [ "$wait_sec" -ge 60 ]; then
+    echo "[s1.startup] ERROR: simple_switch did not start within 60s" >>"$LOG_FILE"
+    exit 1
+  fi
+done
+
+wait_sec=0
+while ! printf "help\n" | simple_switch_CLI >/dev/null 2>&1; do
+  sleep 1
+  wait_sec=$((wait_sec + 1))
+  if [ "$wait_sec" -ge 60 ]; then
+    echo "[s1.startup] ERROR: simple_switch_CLI not ready within 60s" >>"$LOG_FILE"
+    exit 1
+  fi
+done
+
+echo "[s1.startup] loading commands.txt" >>"$LOG_FILE"
+if ! cat commands.txt | simple_switch_CLI >>"$LOG_FILE" 2>&1; then
+  echo "[s1.startup] ERROR: failed to load commands.txt" >>"$LOG_FILE"
+  exit 1
+fi
+
+echo "[s1.startup] ready" >>"$LOG_FILE"

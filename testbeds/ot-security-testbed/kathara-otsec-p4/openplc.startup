@@ -14,3 +14,8 @@ add_static_neigh eth0 10.11.0.20 02:11:00:00:00:20
 add_static_neigh eth0 10.11.0.22 02:11:00:00:00:22
 add_static_neigh eth0 10.11.0.23 02:11:00:00:00:23
 add_static_neigh eth0 10.11.0.24 02:11:00:00:00:24
+
+# Kathara volume mounts require host directories; import the original config file from mounted dir.
+if [ -f /workdir/OpenPLC_v3/host_plc/config.ini ]; then
+  cp /workdir/OpenPLC_v3/host_plc/config.ini /workdir/OpenPLC_v3/etc/config.ini
+fi
