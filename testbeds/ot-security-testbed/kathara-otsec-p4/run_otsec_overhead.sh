@@ -135,6 +135,7 @@ trap cleanup EXIT
 clear_shared_captures() {
   rm -f "$LAB_DIR/shared"/s_*_eth*_in.pcap "$LAB_DIR/shared"/s_*_eth*_out.pcap
   rm -f "$LAB_DIR/shared"/s_*_eth*_in.tcpdump.log "$LAB_DIR/shared"/s_*_eth*_out.tcpdump.log
+  rm -f "$LAB_DIR/shared"/telegraf_once.log "$LAB_DIR/shared"/tcp_stimulate.log
 }
 
 expected_capture_processes() {
@@ -298,10 +299,28 @@ sleep_with_progress() {
 }
 
 stimulate_traffic() {
-  echo "  phase: stimulate OPC UA traffic (telegraf --once)"
-  # Run one forced collection round; ignore failure but log it.
+  echo "  phase: stimulate OPC UA traffic (telegraf --once + tcp probes)"
+  # Forced collection round from telegraf.
   kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
     "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+
+  # Force TCP/4840 attempts across the switch even if OPC UA app-level polling is idle.
+  kathara exec -d "$LAB_DIR" attacker -- sh -lc '
+    {
+      echo "[stim] start $(date -Iseconds)"
+      i=0
+      while [ "$i" -lt 40 ]; do
+        if command -v nc >/dev/null 2>&1; then
+          nc -z -w 1 openplc 4840 >/dev/null 2>&1 || true
+        elif command -v bash >/dev/null 2>&1; then
+          bash -lc "exec 3<>/dev/tcp/openplc/4840; exec 3>&-; exec 3<&-" >/dev/null 2>&1 || true
+        fi
+        i=$((i + 1))
+        sleep 1
+      done
+      echo "[stim] end $(date -Iseconds)"
+    } >/shared/tcp_stimulate.log 2>&1
+  ' >/dev/null 2>&1 || true
 }
 
 set_variant() {
@@ -407,6 +426,8 @@ run_variant_once() {
       cp "$f" "$run_dir/$(basename "$f")"
     done
   done
+  copy_if_exists "$LAB_DIR/shared/telegraf_once.log" "$run_dir/telegraf_once.log"
+  copy_if_exists "$LAB_DIR/shared/tcp_stimulate.log" "$run_dir/tcp_stimulate.log"
 
   write_metadata "$run_dir/metadata.env" "$run_index" "$v" "$started" "$finished"
 
