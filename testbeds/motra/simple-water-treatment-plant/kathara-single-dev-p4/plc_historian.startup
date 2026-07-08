@@ -8,3 +8,15 @@ setup_iface eth0 10.10.20.12/24
 
 add_static_neigh eth0 10.10.20.11 02:00:00:10:02:01
 add_static_neigh eth0 10.10.20.13 02:00:00:10:02:03
+
+# Kathara does not run the image CMD: launch the OPC UA client explicitly.
+# Basic256Sha256/SignAndEncrypt puts certificates on the wire (OPN messages),
+# which is what the extraction P4 variant parses.
+cat > /start_app.sh <<'EOS'
+#!/bin/sh
+export OPCUA_SECURITY_POLICY=Basic256Sha256
+export OPCUA_SECURITY_MODE=SignAndEncrypt
+exec python3 /app/app.py --suri=opc.tcp://10.10.20.11:4840/KRITIS3M/
+EOS
+chmod +x /start_app.sh
+nohup /start_app.sh > /shared/plc_historian.log 2>&1 &

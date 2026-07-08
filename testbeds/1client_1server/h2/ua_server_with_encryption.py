@@ -30,9 +30,14 @@ async def main():
 
 
     cert_user_manager = CertificateUserManager()
-    client_cert_path = Path("certificates/trusted/certs/client-certificate.der")
+    client_cert_path = Path("/certificates/trusted/certs/client-certificate.der")
     if client_cert_path.is_file():
         await cert_user_manager.add_user(str(client_cert_path), name="test_user")
+    else:
+        # Users are loaded once, here: starting the server before the client
+        # certificate is installed guarantees BadUserAccessDenied for every session.
+        print(f"WARNING: no client certificate at {client_cert_path}; "
+              "all authenticated sessions will be rejected", flush=True)
 
     server = Server(user_manager=cert_user_manager)
 
@@ -63,7 +68,7 @@ async def main():
     await server.load_private_key(str(server_private_key))
 
     if USE_TRUST_STORE:
-        trust_store = TrustStore([Path('examples') / 'certificates' / 'trusted' / 'certs'], [])
+        trust_store = TrustStore([Path('/certificates/trusted/certs')], [])
         await trust_store.load()
         validator = CertificateValidator(options=CertificateValidatorOptions.BASIC_VALIDATION | CertificateValidatorOptions.PEER_CLIENT,
                                          trust_store = trust_store)

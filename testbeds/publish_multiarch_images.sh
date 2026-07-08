@@ -13,7 +13,7 @@ Required:
 
 Options:
   --root DIR                    Project root (default: parent of this script)
-  --tag TAG                     Image tag (default: latest)
+  --tag TAG                     Image tag (default: v1)
   --platforms LIST              Platforms list (default: linux/amd64,linux/arm64)
   --builder NAME                buildx builder name (default: pkiota-multiarch)
   --motra-images-dir DIR        Local clone of motra-images repo (optional)
@@ -46,7 +46,7 @@ EOF
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOCKERHUB_USER=""
-TAG="latest"
+TAG="v1"
 PLATFORMS="linux/amd64,linux/arm64"
 BUILDER="pkiota-multiarch"
 MOTRA_IMAGES_DIR=""
@@ -177,6 +177,127 @@ build_wrapper_from_base() {
 
   cat > "$tmp/Dockerfile" <<EOF
 FROM ${base_img}
+RUN set -eux; \
+    if command -v apt-get >/dev/null 2>&1; then \
+      if ! apt-get update; then \
+        sed -ri 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g; s|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list || true; \
+        sed -ri '/stretch-updates/d' /etc/apt/sources.list || true; \
+        printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99archive-no-valid-until; \
+        apt-get -o Acquire::Check-Valid-Until=false update; \
+      fi; \
+      apt-get install -y --no-install-recommends iproute2; \
+      rm -rf /var/lib/apt/lists/*; \
+    elif command -v apk >/dev/null 2>&1; then \
+      apk add --no-cache iproute2; \
+    else \
+      echo "Unsupported base image package manager (need apt-get or apk)"; \
+      exit 1; \
+    fi; \
+    if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi
+EOF
+
+  build_push "$out_img" "$tmp/Dockerfile" "$tmp"
+  rm -rf "$tmp"
+}
+
+require_otsec_cert() {
+  local path="$1"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    return 0
+  fi
+  if [[ ! -f "$path" ]]; then
+    echo "Missing required OTSEC certificate/key: $path" >&2
+    echo "Generate certificates first with:" >&2
+    echo "  (cd \"$ROOT_DIR/testbeds/ot-security-testbed/certificates\" && ./create-certs.sh)" >&2
+    exit 1
+  fi
+}
+
+build_otsec_industrial_wrapper_from_base() {
+  local base_img="$1"
+  local out_img="$2"
+  local cert_dir="$ROOT_DIR/testbeds/ot-security-testbed/certificates"
+  local tmp
+
+  if [[ "$SKIP_EXISTING" -eq 1 && "$DRY_RUN" -eq 0 ]] && remote_image_has_all_requested_platforms "$out_img"; then
+    log "Skipping existing image with requested platforms: $out_img"
+    return 0
+  fi
+
+  require_otsec_cert "$cert_dir/applications/industrial-process.crt.der"
+  require_otsec_cert "$cert_dir/applications/industrial-process.key"
+  require_otsec_cert "$cert_dir/applications/telegraf.crt.der"
+
+  tmp="$(mktemp -d)"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    cp "$cert_dir/applications/industrial-process.crt.der" "$tmp/industrial-process.der"
+    cp "$cert_dir/applications/industrial-process.key" "$tmp/industrial-process.pem"
+    cp "$cert_dir/applications/telegraf.crt.der" "$tmp/telegraf.der"
+  fi
+
+  cat > "$tmp/Dockerfile" <<EOF
+FROM ${base_img}
+COPY industrial-process.der /usr/src/simulator/industrial-process.der
+COPY industrial-process.pem /usr/src/simulator/industrial-process.pem
+COPY telegraf.der /usr/src/simulator/telegraf.der
+RUN set -eux; \
+    if command -v apt-get >/dev/null 2>&1; then \
+      if ! apt-get update; then \
+        sed -ri 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g; s|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list || true; \
+        sed -ri '/stretch-updates/d' /etc/apt/sources.list || true; \
+        printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99archive-no-valid-until; \
+        apt-get -o Acquire::Check-Valid-Until=false update; \
+      fi; \
+      apt-get install -y --no-install-recommends iproute2; \
+      rm -rf /var/lib/apt/lists/*; \
+    elif command -v apk >/dev/null 2>&1; then \
+      apk add --no-cache iproute2; \
+    else \
+      echo "Unsupported base image package manager (need apt-get or apk)"; \
+      exit 1; \
+    fi; \
+    if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi
+EOF
+
+  build_push "$out_img" "$tmp/Dockerfile" "$tmp"
+  rm -rf "$tmp"
+}
+
+build_otsec_openplc_wrapper_from_base() {
+  local base_img="$1"
+  local out_img="$2"
+  local cert_dir="$ROOT_DIR/testbeds/ot-security-testbed/certificates"
+  local tmp
+
+  if [[ "$SKIP_EXISTING" -eq 1 && "$DRY_RUN" -eq 0 ]] && remote_image_has_all_requested_platforms "$out_img"; then
+    log "Skipping existing image with requested platforms: $out_img"
+    return 0
+  fi
+
+  require_otsec_cert "$cert_dir/applications/plc.crt.der"
+  require_otsec_cert "$cert_dir/applications/plc.key.der"
+  require_otsec_cert "$cert_dir/ca/ca.crt.der"
+  require_otsec_cert "$cert_dir/ca/ca.crl"
+
+  tmp="$(mktemp -d)"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    cp "$cert_dir/applications/plc.crt.der" "$tmp/plc.crt.der"
+    cp "$cert_dir/applications/plc.key.der" "$tmp/plc.key.der"
+    cp "$cert_dir/ca/ca.crt.der" "$tmp/ca.crt.der"
+    cp "$cert_dir/ca/ca.crl" "$tmp/ca.crl"
+  fi
+
+  cat > "$tmp/Dockerfile" <<EOF
+FROM ${base_img}
+RUN mkdir -p \
+      /workdir/OpenPLC_v3/etc/PKI/own/certs \
+      /workdir/OpenPLC_v3/etc/PKI/own/private \
+      /workdir/OpenPLC_v3/etc/PKI/trusted/certs \
+      /workdir/OpenPLC_v3/etc/PKI/trusted/crl
+COPY plc.crt.der /workdir/OpenPLC_v3/etc/PKI/own/certs/plc.crt.der
+COPY plc.key.der /workdir/OpenPLC_v3/etc/PKI/own/private/plc.key.der
+COPY ca.crt.der /workdir/OpenPLC_v3/etc/PKI/trusted/certs/ca.crt.der
+COPY ca.crl /workdir/OpenPLC_v3/etc/PKI/trusted/crl/ca.crl
 RUN set -eux; \
     if command -v apt-get >/dev/null 2>&1; then \
       if ! apt-get update; then \
@@ -367,8 +488,8 @@ if [[ "$DO_OTSEC_WRAP" -eq 1 ]]; then
   build_wrapper_from_base "chronograf:1.9.4" "$IMG_OTSEC_CHRONOGRAF_WRAP"
   build_wrapper_from_base "kapacitor:1.6.4" "$IMG_OTSEC_KAPACITOR_WRAP"
 
-  build_wrapper_from_base "$IMG_OTSEC_INDUSTRIAL" "$IMG_OTSEC_INDUSTRIAL_WRAP"
-  build_wrapper_from_base "$IMG_OTSEC_OPENPLC" "$IMG_OTSEC_OPENPLC_WRAP"
+  build_otsec_industrial_wrapper_from_base "$IMG_OTSEC_INDUSTRIAL" "$IMG_OTSEC_INDUSTRIAL_WRAP"
+  build_otsec_openplc_wrapper_from_base "$IMG_OTSEC_OPENPLC" "$IMG_OTSEC_OPENPLC_WRAP"
   build_wrapper_from_base "$IMG_OTSEC_FUXA" "$IMG_OTSEC_FUXA_WRAP"
   build_wrapper_from_base "$IMG_OTSEC_ATTACKER" "$IMG_OTSEC_ATTACKER_WRAP"
   build_wrapper_from_base "$IMG_OTSEC_SHELLINABOX" "$IMG_OTSEC_SHELLINABOX_WRAP"

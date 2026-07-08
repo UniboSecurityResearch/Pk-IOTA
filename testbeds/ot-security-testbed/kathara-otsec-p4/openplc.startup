@@ -19,3 +19,14 @@ add_static_neigh eth0 10.11.0.24 02:11:00:00:00:24
 if [ -f /workdir/OpenPLC_v3/host_plc/config.ini ]; then
   cp /workdir/OpenPLC_v3/host_plc/config.ini /workdir/OpenPLC_v3/etc/config.ini
 fi
+if [ -f /workdir/OpenPLC_v3/host_plc/userspasswd ]; then
+  cp /workdir/OpenPLC_v3/host_plc/userspasswd /workdir/OpenPLC_v3/etc/userspasswd
+fi
+if [ -f /workdir/OpenPLC_v3/host_plc/user_roles.csv ]; then
+  cp /workdir/OpenPLC_v3/host_plc/user_roles.csv /workdir/OpenPLC_v3/etc/user_roles.csv
+fi
+
+# Kathara does not run the image ENTRYPOINT: start OpenPLC (OPC UA server on
+# tcp/4840) explicitly or no OPC UA traffic ever exists in this lab.
+cd /workdir/OpenPLC_v3
+nohup ./start_openplc.sh > /shared/openplc.log 2>&1 &

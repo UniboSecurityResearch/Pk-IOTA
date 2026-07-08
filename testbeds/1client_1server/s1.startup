@@ -1,4 +1,4 @@
-p4c active.p4
+p4c active.p4 || exit 1
 simple_switch -i 1@eth0 -i 2@eth1 --log-console active.json > /shared/s1.log 2>&1 &
 
 while ! pgrep simple_switch >/dev/null; do sleep 1; done

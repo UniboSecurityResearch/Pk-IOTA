@@ -8,3 +8,16 @@ setup_iface eth0 10.10.30.13/24
 
 add_static_neigh eth0 10.10.30.11 02:00:00:10:03:01
 add_static_neigh eth0 10.10.30.12 02:00:00:10:03:02
+
+# Kathara does not run the image CMD: launch the OPC UA server explicitly.
+# /start_app.sh is re-invoked by the campaign runner to force fresh
+# OpenSecureChannel handshakes inside the capture window.
+cat > /start_app.sh <<'EOS'
+#!/bin/sh
+export OPCUA_SERVER_CERT=/pki/server-cert.pem
+export OPCUA_SERVER_KEY=/pki/server-key.pem
+cd /usr/src/app
+exec "${POETRY_HOME:-/opt/poetry}/bin/poetry" run python server.py
+EOS
+chmod +x /start_app.sh
+nohup /start_app.sh > /shared/valve_server.log 2>&1 &

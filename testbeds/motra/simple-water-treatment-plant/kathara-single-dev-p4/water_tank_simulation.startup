@@ -6,3 +6,15 @@ ensure_iproute
 
 setup_iface eth0 10.10.40.12/24
 add_static_neigh eth0 10.10.40.11 02:00:00:10:04:01
+
+# Kathara does not run the image CMD: launch the OPC UA client explicitly.
+# Basic256Sha256/SignAndEncrypt puts certificates on the wire (OPN messages),
+# which is what the extraction P4 variant parses.
+cat > /start_app.sh <<'EOS'
+#!/bin/sh
+export OPCUA_SECURITY_POLICY=Basic256Sha256
+export OPCUA_SECURITY_MODE=SignAndEncrypt
+exec python3 /app/app.py --suri=opc.tcp://10.10.40.11:4840/KRITIS3M/
+EOS
+chmod +x /start_app.sh
+nohup /start_app.sh > /shared/water_tank_simulation.log 2>&1 &

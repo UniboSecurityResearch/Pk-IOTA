@@ -14,3 +14,8 @@ add_static_neigh eth0 10.11.0.21 02:11:00:00:00:21
 add_static_neigh eth0 10.11.0.22 02:11:00:00:00:22
 add_static_neigh eth0 10.11.0.23 02:11:00:00:00:23
 add_static_neigh eth0 10.11.0.24 02:11:00:00:00:24
+
+# Kathara does not run the image ENTRYPOINT: start the telegraf daemon so the
+# lab carries steady OPC UA polling traffic. Fresh OPN handshakes inside the
+# capture window are produced separately by the runner via `telegraf --once`.
+nohup telegraf --config /etc/telegraf/telegraf.conf > /shared/telegraf.log 2>&1 &

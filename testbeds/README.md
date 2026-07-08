@@ -20,7 +20,7 @@ This document explains the available testbeds, required images, and the exact co
 ## Shared Tooling in `testbeds/`
 - `run.sh`
   - All-in-one orchestrator for local campaigns.
-  - By default it does not build MOTRA/OTSEC images; it checks required images from each `lab.conf` and pulls them if available.
+  - It checks required images from each `lab.conf`; use `--build-motra` and `--build-otsec` when local secure wrapper images are missing.
 - `publish_multiarch_images.sh`
   - Builds and pushes multi-arch images (`amd64`, `arm64`).
 - `set_lab_images.sh`
@@ -53,19 +53,20 @@ When using `run.sh` without `--results-dir`, outputs are written to:
 cd testbeds/Maynard
 ./run_maynard_overhead.sh \
   --runs 10 \
-  --variant both \
+  --variant all \
   --start-timeout 300 \
   --timeout 21600 \
   --out-dir ../../tests/TESTBEDS/maynard_overhead_main
 
 python3 ./analyze_maynard_overhead.py \
   --input-dir ../../tests/TESTBEDS/maynard_overhead_main \
-  --output-dir ../../tests/TESTBEDS/maynard_overhead_main
+  --output-dir ../../tests/TESTBEDS/maynard_overhead_main \
+  --require-same-ingress
 ```
 
 ## 2) MOTRA
 
-Build base images first (from `single-dev` compose flow), then build wrappers:
+Build secure wrapper images first:
 ```bash
 cd testbeds/motra/simple-water-treatment-plant/kathara-single-dev-p4
 ./build_kathara_images.sh
@@ -75,14 +76,15 @@ Run and analyze:
 ```bash
 ./run_motra_overhead.sh \
   --runs 3 \
-  --variant both \
+  --variant all \
   --duration-sec 14400 \
   --warmup-sec 30 \
   --out-dir ../../../../tests/TESTBEDS/motra_overhead_main
 
 python3 ./analyze_motra_overhead.py \
   --input-dir ../../../../tests/TESTBEDS/motra_overhead_main \
-  --output-dir ../../../../tests/TESTBEDS/motra_overhead_main
+  --output-dir ../../../../tests/TESTBEDS/motra_overhead_main \
+  --require-extraction-opn-cert
 ```
 
 ## 3) OTSEC
@@ -99,14 +101,17 @@ cd ../kathara-otsec-p4
 
 ./run_otsec_overhead.sh \
   --runs 3 \
-  --variant both \
+  --variant all \
   --duration-sec 14400 \
   --warmup-sec 30 \
+  --stimulate \
+  --diagnostics on-failure \
   --out-dir ../../../tests/TESTBEDS/otsec_overhead_main
 
 python3 ./analyze_otsec_overhead.py \
   --input-dir ../../../tests/TESTBEDS/otsec_overhead_main \
-  --output-dir ../../../tests/TESTBEDS/otsec_overhead_main
+  --output-dir ../../../tests/TESTBEDS/otsec_overhead_main \
+  --require-extraction-opn-cert
 ```
 
 ## 4) 1client_1server Certificate-Size Sweep
@@ -114,7 +119,7 @@ python3 ./analyze_otsec_overhead.py \
 cd testbeds/1client_1server
 ./run_cert_size_overhead.sh \
   --runs 3 \
-  --variant both \
+  --variant all \
   --key-bits-list 1024,2048,3072,4096 \
   --sessions 30 \
   --session-timeout 60 \
@@ -124,7 +129,8 @@ cd testbeds/1client_1server
 
 python3 ./analyze_cert_size_overhead.py \
   --input-dir ../../tests/TESTBEDS/cert_size_overhead_main \
-  --output-dir ../../tests/TESTBEDS/cert_size_overhead_main
+  --output-dir ../../tests/TESTBEDS/cert_size_overhead_main \
+  --require-extraction-opn-cert
 ```
 
 ---
@@ -149,6 +155,8 @@ Enable local image builds only when needed:
 docker login
 ./testbeds/publish_multiarch_images.sh --root "$PWD" --dockerhub-user <user> --tag v1
 ```
+
+Image tags are explicit. Docker Hub does not automatically create `latest` when you push `v1`, so the runners and lab files use versioned tags such as `loriringhio97/tcpreplay:v1` and `loriringhio97/asyncua:v1`.
 
 The publish script now skips already published tags by default and does not build base images unless explicitly requested:
 ```bash

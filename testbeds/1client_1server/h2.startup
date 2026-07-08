@@ -5,4 +5,6 @@ arp -s 10.0.0.1 00:00:0a:00:00:01
 arp -s 10.0.0.3 00:00:0a:00:00:03
 arp -s 10.0.0.4 00:00:0a:00:00:04
 
-python3 ua_server_with_encryption.py  &
+# The OPC UA server is started by the campaign runner AFTER both certificates
+# have been generated and exchanged (CertificateUserManager loads the trusted
+# client certificate only once, at server startup).

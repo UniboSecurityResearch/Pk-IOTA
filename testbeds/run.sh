@@ -1,3 +1,4 @@
+cat run.sh 
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -14,8 +15,8 @@ Options:
   --profile NAME            main | smoke (default: main)
   --tag NAME                Output suffix tag (default: profile name)
   --status-only             Print runtime/results status and exit
-  --tcpreplay-image IMG     Image for Maynard replay hosts (default: loriringhio97/tcpreplay:latest)
-  --asyncua-image IMG       Image for 1client_1server hosts (default: loriringhio97/asyncua:latest)
+  --tcpreplay-image IMG     Image for Maynard replay hosts (default: loriringhio97/tcpreplay:v1)
+  --asyncua-image IMG       Image for 1client_1server hosts (default: loriringhio97/asyncua:v1)
   --wireshark-image IMG     Common wireshark image (default: lscr.io/linuxserver/wireshark)
   --set-lab-images          Rewrite lab.conf image refs for Maynard + 1client_1server
 
@@ -36,6 +37,7 @@ Options:
   --maynard-timeout SEC     Override Maynard --timeout
   --maynard-start-timeout SEC
                             Override Maynard --start-timeout
+  --maynard-duration SEC    Override Maynard --duration-sec (0 waits for full replay)
   --motra-runs N            Override MOTRA --runs
   --motra-duration SEC      Override MOTRA --duration-sec
   --otsec-runs N            Override OTSEC --runs
@@ -44,6 +46,7 @@ Options:
   --cert-sessions N         Override cert-size --sessions
   --cert-timeout SEC        Override cert-size --session-timeout
   --cert-key-bits CSV       Override cert-size --key-bits-list
+  --cert-keygen-timeout SEC Override cert-size --keygen-timeout
 
   -h, --help                Show this help
 
@@ -76,13 +79,14 @@ DO_CERT=1
 DO_FORMAL=1
 DO_SET_LAB_IMAGES=0
 
-TCPREPLAY_IMAGE="loriringhio97/tcpreplay:latest"
-ASYNCUA_IMAGE="loriringhio97/asyncua:latest"
+TCPREPLAY_IMAGE="loriringhio97/tcpreplay:v1"
+ASYNCUA_IMAGE="loriringhio97/asyncua:v1"
 WIRESHARK_IMAGE="lscr.io/linuxserver/wireshark"
 
 MAYNARD_RUNS=""
 MAYNARD_TIMEOUT=""
 MAYNARD_START_TIMEOUT=""
+MAYNARD_DURATION=""
 MOTRA_RUNS=""
 MOTRA_DURATION=""
 OTSEC_RUNS=""
@@ -91,6 +95,7 @@ CERT_RUNS=""
 CERT_SESSIONS=""
 CERT_TIMEOUT=""
 CERT_KEY_BITS=""
+CERT_KEYGEN_TIMEOUT=""
 
 log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -122,6 +127,7 @@ set_profile_defaults() {
       MAYNARD_RUNS="${MAYNARD_RUNS:-10}"
       MAYNARD_TIMEOUT="${MAYNARD_TIMEOUT:-21600}"
       MAYNARD_START_TIMEOUT="${MAYNARD_START_TIMEOUT:-300}"
+      MAYNARD_DURATION="${MAYNARD_DURATION:-0}"
       MOTRA_RUNS="${MOTRA_RUNS:-3}"
       MOTRA_DURATION="${MOTRA_DURATION:-14400}"
       OTSEC_RUNS="${OTSEC_RUNS:-3}"
@@ -130,11 +136,13 @@ set_profile_defaults() {
       CERT_SESSIONS="${CERT_SESSIONS:-30}"
       CERT_TIMEOUT="${CERT_TIMEOUT:-60}"
       CERT_KEY_BITS="${CERT_KEY_BITS:-1024,2048,3072,4096}"
+      CERT_KEYGEN_TIMEOUT="${CERT_KEYGEN_TIMEOUT:-300}"
       ;;
     smoke)
       MAYNARD_RUNS="${MAYNARD_RUNS:-1}"
       MAYNARD_TIMEOUT="${MAYNARD_TIMEOUT:-1800}"
       MAYNARD_START_TIMEOUT="${MAYNARD_START_TIMEOUT:-120}"
+      MAYNARD_DURATION="${MAYNARD_DURATION:-300}"
       MOTRA_RUNS="${MOTRA_RUNS:-1}"
       MOTRA_DURATION="${MOTRA_DURATION:-120}"
       OTSEC_RUNS="${OTSEC_RUNS:-1}"
@@ -143,6 +151,7 @@ set_profile_defaults() {
       CERT_SESSIONS="${CERT_SESSIONS:-5}"
       CERT_TIMEOUT="${CERT_TIMEOUT:-40}"
       CERT_KEY_BITS="${CERT_KEY_BITS:-2048}"
+      CERT_KEYGEN_TIMEOUT="${CERT_KEYGEN_TIMEOUT:-120}"
       ;;
     *)
       echo "Invalid --profile value: $PROFILE (expected: main|smoke)" >&2
@@ -241,15 +250,58 @@ run_clean() {
 }
 
 run_pull_common_images() {
-  local imgs=(
-    "kathara/p4"
-    "$TCPREPLAY_IMAGE"
-    "$ASYNCUA_IMAGE"
-    "$WIRESHARK_IMAGE"
-  )
-  log "Pulling common images"
+  local imgs=()
+  local lab_conf
+  local -a lab_imgs
+  if [[ "$DO_MAYNARD" -eq 1 ]]; then
+    lab_conf="$ROOT_DIR/testbeds/Maynard/lab.conf"
+    mapfile -t lab_imgs < <(extract_lab_images "$lab_conf")
+    imgs+=("${lab_imgs[@]}")
+  fi
+  if [[ "$DO_MOTRA" -eq 1 ]]; then
+    lab_conf="$ROOT_DIR/testbeds/motra/simple-water-treatment-plant/kathara-single-dev-p4/lab.conf"
+    mapfile -t lab_imgs < <(extract_lab_images "$lab_conf")
+    imgs+=("${lab_imgs[@]}")
+  fi
+  if [[ "$DO_OTSEC" -eq 1 ]]; then
+    lab_conf="$ROOT_DIR/testbeds/ot-security-testbed/kathara-otsec-p4/lab.conf"
+    mapfile -t lab_imgs < <(extract_lab_images "$lab_conf")
+    imgs+=("${lab_imgs[@]}")
+  fi
+  if [[ "$DO_CERT" -eq 1 ]]; then
+    lab_conf="$ROOT_DIR/testbeds/1client_1server/lab.conf"
+    mapfile -t lab_imgs < <(extract_lab_images "$lab_conf")
+    imgs+=("${lab_imgs[@]}")
+  fi
+
+  local unique_imgs=()
+  local img seen existing
   for img in "${imgs[@]}"; do
-    echo "  - docker pull $img"
+    seen=0
+    for existing in "${unique_imgs[@]:-}"; do
+      if [[ "$existing" == "$img" ]]; then
+        seen=1
+        break
+      fi
+    done
+    if [[ "$seen" -eq 0 ]]; then
+      unique_imgs+=("$img")
+    fi
+  done
+
+  log "Ensuring common images are available"
+  for img in "${unique_imgs[@]}"; do
+    if docker image inspect "$img" >/dev/null 2>&1; then
+      echo "  - OK local: $img"
+      continue
+    fi
+    case "$img" in
+      dashboard:kathara-net|plc-server:kathara-net|historian:kathara-net|plc-logic:kathara-net|levelsensor-server:kathara-net|water-tank-simulation:kathara-net|valve-server:kathara-net|telegraf:kathara-net|influxdb:kathara-net|chronograf:kathara-net|kapacitor:kathara-net|ot-*:kathara-net)
+        echo "  - local build expected: $img"
+        continue
+        ;;
+    esac
+    echo "  - pulling: $img"
     docker pull "$img"
   done
 }
@@ -327,20 +379,20 @@ run_set_lab_images() {
 run_build_motra() {
   local d="$ROOT_DIR/testbeds/motra/simple-water-treatment-plant/kathara-single-dev-p4"
   local base_imgs=(
-    "dashboard:latest"
-    "plc-server:latest"
-    "historian:latest"
-    "plc-logic:latest"
-    "levelsensor-server:latest"
-    "water-tank-simulation:latest"
-    "valve-server:latest"
+    "loriringhio97/motra-dashboard-kathara-net:v1"
+    "loriringhio97/motra-plc-server-kathara-net:v1"
+    "loriringhio97/motra-historian-kathara-net:v1"
+    "loriringhio97/motra-plc-logic-kathara-net:v1"
+    "loriringhio97/motra-levelsensor-server-kathara-net:v1"
+    "loriringhio97/motra-water-tank-simulation-kathara-net:v1"
+    "loriringhio97/motra-valve-server-kathara-net:v1"
   )
 
   log "Checking MOTRA base images"
   local missing=()
   local img
   for img in "${base_imgs[@]}"; do
-    if ! docker image inspect "$img" >/dev/null 2>&1; then
+    if ! ensure_image_available "$img"; then
       missing+=("$img")
     fi
   done
@@ -378,72 +430,96 @@ run_build_otsec() {
 
 run_maynard_campaign() {
   local out="$RESULTS_DIR/maynard_overhead_${TAG}"
+  local -a quality_args=(--require-same-ingress)
+  if [[ "$PROFILE" == "smoke" ]]; then
+    quality_args+=(--fail-on-quality)
+  fi
   log "Running Maynard campaign -> $out"
   (
     cd "$ROOT_DIR/testbeds/Maynard"
     ./run_maynard_overhead.sh \
       --runs "$MAYNARD_RUNS" \
-      --variant both \
+      --variant all \
       --start-timeout "$MAYNARD_START_TIMEOUT" \
       --timeout "$MAYNARD_TIMEOUT" \
+      --duration-sec "$MAYNARD_DURATION" \
       --out-dir "$out"
     python3 ./analyze_maynard_overhead.py \
       --input-dir "$out" \
-      --output-dir "$out"
+      --output-dir "$out" \
+      "${quality_args[@]}"
   )
 }
 
 run_motra_campaign() {
   local out="$RESULTS_DIR/motra_overhead_${TAG}"
+  local -a quality_args=(--require-extraction-opn-cert)
+  if [[ "$PROFILE" == "smoke" ]]; then
+    quality_args+=(--fail-on-quality)
+  fi
   log "Running MOTRA campaign -> $out"
   (
     cd "$ROOT_DIR/testbeds/motra/simple-water-treatment-plant/kathara-single-dev-p4"
     ./run_motra_overhead.sh \
       --runs "$MOTRA_RUNS" \
-      --variant both \
+      --variant all \
       --duration-sec "$MOTRA_DURATION" \
       --warmup-sec 30 \
       --out-dir "$out"
     python3 ./analyze_motra_overhead.py \
       --input-dir "$out" \
-      --output-dir "$out"
+      --output-dir "$out" \
+      "${quality_args[@]}"
   )
 }
 
 run_otsec_campaign() {
   local out="$RESULTS_DIR/otsec_overhead_${TAG}"
+  local -a quality_args=(--require-extraction-opn-cert)
+  if [[ "$PROFILE" == "smoke" ]]; then
+    quality_args+=(--fail-on-quality)
+  fi
   log "Running OTSEC campaign -> $out"
   (
     cd "$ROOT_DIR/testbeds/ot-security-testbed/kathara-otsec-p4"
     ./run_otsec_overhead.sh \
       --runs "$OTSEC_RUNS" \
-      --variant both \
+      --variant all \
       --duration-sec "$OTSEC_DURATION" \
       --warmup-sec 30 \
+      --stimulate \
+      --diagnostics on-failure \
       --out-dir "$out"
     python3 ./analyze_otsec_overhead.py \
       --input-dir "$out" \
-      --output-dir "$out"
+      --output-dir "$out" \
+      "${quality_args[@]}"
   )
 }
 
 run_cert_campaign() {
   local out="$RESULTS_DIR/cert_size_overhead_${TAG}"
+  local -a quality_args=(--require-extraction-opn-cert)
+  if [[ "$PROFILE" == "smoke" ]]; then
+    quality_args+=(--fail-on-quality)
+  fi
   log "Running 1client_1server cert-size campaign -> $out"
   (
     cd "$ROOT_DIR/testbeds/1client_1server"
     ./run_cert_size_overhead.sh \
       --runs "$CERT_RUNS" \
-      --variant both \
+      --variant all \
       --key-bits-list "$CERT_KEY_BITS" \
       --sessions "$CERT_SESSIONS" \
       --session-timeout "$CERT_TIMEOUT" \
+      --keygen-timeout "$CERT_KEYGEN_TIMEOUT" \
       --warmup-sec 20 \
       --mtu 9000 \
       --out-dir "$out"
     python3 ./analyze_cert_size_overhead.py \
       --input-dir "$out" \
-      --output-dir "$out"
+      --output-dir "$out" \
+      "${quality_args[@]}"
   )
 }
 
@@ -483,9 +559,15 @@ run_with_log() {
   local log_file="$2"
   shift 2
   log "START $step"
+  local rc
+  # Run each step in a strict subshell and still mirror output to console+log.
+  # Using process substitution (not a pipeline) preserves the real exit code.
   set +e
-  "$@" 2>&1 | tee "$log_file"
-  local rc="${PIPESTATUS[0]}"
+  (
+    set -euo pipefail
+    "$@"
+  ) > >(tee "$log_file") 2>&1
+  rc=$?
   set -e
   if [[ "$rc" -ne 0 ]]; then
     log "FAILED $step (rc=$rc) - log: $log_file"
@@ -522,6 +604,7 @@ while [[ $# -gt 0 ]]; do
     --maynard-runs) MAYNARD_RUNS="${2:-}"; shift 2 ;;
     --maynard-timeout) MAYNARD_TIMEOUT="${2:-}"; shift 2 ;;
     --maynard-start-timeout) MAYNARD_START_TIMEOUT="${2:-}"; shift 2 ;;
+    --maynard-duration) MAYNARD_DURATION="${2:-}"; shift 2 ;;
     --motra-runs) MOTRA_RUNS="${2:-}"; shift 2 ;;
     --motra-duration) MOTRA_DURATION="${2:-}"; shift 2 ;;
     --otsec-runs) OTSEC_RUNS="${2:-}"; shift 2 ;;
@@ -530,6 +613,7 @@ while [[ $# -gt 0 ]]; do
     --cert-sessions) CERT_SESSIONS="${2:-}"; shift 2 ;;
     --cert-timeout) CERT_TIMEOUT="${2:-}"; shift 2 ;;
     --cert-key-bits) CERT_KEY_BITS="${2:-}"; shift 2 ;;
+    --cert-keygen-timeout) CERT_KEYGEN_TIMEOUT="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -550,8 +634,8 @@ set_profile_defaults
 
 for n in \
   "$MAYNARD_RUNS" "$MAYNARD_TIMEOUT" "$MAYNARD_START_TIMEOUT" \
-  "$MOTRA_RUNS" "$MOTRA_DURATION" "$OTSEC_RUNS" "$OTSEC_DURATION" \
-  "$CERT_RUNS" "$CERT_SESSIONS" "$CERT_TIMEOUT"; do
+  "$MAYNARD_DURATION" "$MOTRA_RUNS" "$MOTRA_DURATION" "$OTSEC_RUNS" "$OTSEC_DURATION" \
+  "$CERT_RUNS" "$CERT_SESSIONS" "$CERT_TIMEOUT" "$CERT_KEYGEN_TIMEOUT"; do
   if ! is_number "$n"; then
     echo "Invalid numeric value: $n" >&2
     exit 1
@@ -585,6 +669,8 @@ LOG_DIR="$RESULTS_DIR/logs/$(date +%Y%m%d_%H%M%S)_${TAG}"
 mkdir -p "$LOG_DIR"
 log "logs=$LOG_DIR"
 
+# Setup steps abort everything on failure (nothing meaningful can follow),
+# campaign steps do not: a broken testbed must not cost the others' results.
 if [[ "$DO_PREFLIGHT" -eq 1 ]]; then
   run_with_log "preflight" "$LOG_DIR/01_preflight.log" run_preflight
 fi
@@ -604,22 +690,38 @@ if [[ "$DO_BUILD_OTSEC" -eq 1 ]]; then
   run_with_log "build_otsec" "$LOG_DIR/06_build_otsec.log" run_build_otsec
 fi
 run_with_log "check_required_images" "$LOG_DIR/06b_check_images.log" run_check_required_images
+
+FAILED_CAMPAIGNS=()
+run_campaign_step() {
+  local step="$1"
+  local log_file="$2"
+  shift 2
+  if ! run_with_log "$step" "$log_file" "$@"; then
+    FAILED_CAMPAIGNS+=("$step")
+  fi
+}
+
 if [[ "$DO_MAYNARD" -eq 1 ]]; then
-  run_with_log "maynard" "$LOG_DIR/07_maynard.log" run_maynard_campaign
+  run_campaign_step "maynard" "$LOG_DIR/07_maynard.log" run_maynard_campaign
 fi
 if [[ "$DO_MOTRA" -eq 1 ]]; then
-  run_with_log "motra" "$LOG_DIR/08_motra.log" run_motra_campaign
+  run_campaign_step "motra" "$LOG_DIR/08_motra.log" run_motra_campaign
 fi
 if [[ "$DO_OTSEC" -eq 1 ]]; then
-  run_with_log "otsec" "$LOG_DIR/09_otsec.log" run_otsec_campaign
+  run_campaign_step "otsec" "$LOG_DIR/09_otsec.log" run_otsec_campaign
 fi
 if [[ "$DO_CERT" -eq 1 ]]; then
-  run_with_log "cert_size" "$LOG_DIR/10_cert_size.log" run_cert_campaign
+  run_campaign_step "cert_size" "$LOG_DIR/10_cert_size.log" run_cert_campaign
 fi
 if [[ "$DO_FORMAL" -eq 1 ]]; then
-  run_with_log "formal" "$LOG_DIR/11_formal.log" run_formal_checks
+  run_campaign_step "formal" "$LOG_DIR/11_formal.log" run_formal_checks
 fi
 
+if [[ "${#FAILED_CAMPAIGNS[@]}" -gt 0 ]]; then
+  log "COMPLETED WITH FAILURES: ${FAILED_CAMPAIGNS[*]}"
+  log "Logs: $LOG_DIR"
+  exit 1
+fi
 log "All requested steps completed."
 log "Tip: run status check with:"
 echo "  $SCRIPT_DIR/run.sh --root \"$ROOT_DIR\" --results-dir \"$RESULTS_DIR\" --status-only"

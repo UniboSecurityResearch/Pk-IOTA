@@ -2,16 +2,14 @@
 #include <core.p4>
 #include <v1model.p4>
 
-/*************************************************************************
-*********************** H E A D E R S  ***********************************
-*************************************************************************/
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<16> IPV4_LEN = 16w20;
-const bit<24> OPN = 0x4f504e; //OPN = OpenSecureChannel message type
-const bit<32> NULLCERTSTRING = 0xffffffff; // Value used for indicating that the security policy is None and there will be no certificate
+const bit<16> OPCUA_PORT = 8666;
+const bit<16> OPCUA_HEADER_BITS = 16w64;
+const bit<24> OPN = 0x4f504e;
+const bit<32> NULLCERTSTRING = 0xffffffff;
+const bit<32> MAX_CERT_BYTES = 32w25855;
 
-// supported certificate lengths: 2048*100.
-#define CHUNK_SIZE 2048
 #define MAX_CHUNKS 100
 
 typedef bit<48> macAddr_t;
@@ -51,9 +49,7 @@ header tcp_t {
 }
 
 header tcp_options_t {
-    bit<8> nop;
-    bit<8> nop2;
-    bit<80> timestamps;
+    varbit<320> options;
 }
 
 header opcua_t {
@@ -88,18 +84,16 @@ header opcua_security_hdr6_thumb_t {
     bit<160> receiverCertificateThumbprint;
 }
 
-struct tcp_metadata_t
-{
-    bit<16> full_length; //ipv4.totalLen - 20
-    bit<16> full_length_in_bytes;
+struct tcp_metadata_t {
+    bit<16> full_length;
     bit<16> header_length;
-    bit<16> header_length_in_bytes;
     bit<16> payload_length;
-    bit<16> payload_length_in_bytes;
+    bit<16> options_length;
 }
 
 struct metadata {
     tcp_metadata_t tcp_metadata;
+    bit<1> cert_too_large;
 }
 
 struct headers {
@@ -116,17 +110,12 @@ struct headers {
     opcua_security_hdr6_thumb_t opcua_security_hdr_thumb;
 }
 
-/*************************************************************************
-*********************** P A R S E R  ***********************************
-*************************************************************************/
-
 parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
 
     bit<32> policyUriLength_bits;
-    bit<32> cert_bits;
     bit<32> cert_bytes;
     bit<8> hex1;
     bit<8> hex2;
@@ -135,9 +124,10 @@ parser MyParser(packet_in packet,
     bit<32> remaining;
 
     state start {
-       transition parse_ethernet;
+        meta.cert_too_large = 0;
+        transition parse_ethernet;
     }
-    
+
     state parse_ethernet {
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
@@ -149,8 +139,8 @@ parser MyParser(packet_in packet,
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
-            6: parse_tcp;  // Protocol 6 corresponds to TCP
-            _: accept;    // For other protocols, skip to accept
+            6: parse_tcp;
+            default: accept;
         }
     }
 
@@ -158,39 +148,54 @@ parser MyParser(packet_in packet,
         packet.extract(hdr.tcp);
 
         meta.tcp_metadata.full_length = (hdr.ipv4.totalLen - IPV4_LEN) * 8;
-        meta.tcp_metadata.header_length = (((bit<16>)hdr.tcp.dataOffset) << 5);
+        meta.tcp_metadata.header_length = ((bit<16>)hdr.tcp.dataOffset) << 5;
         meta.tcp_metadata.payload_length = meta.tcp_metadata.full_length - meta.tcp_metadata.header_length;
-
-        // meta.tcp_metadata.full_length_in_bytes =  (hdr.ipv4.totalLen - IPV4_LEN);
-        // meta.tcp_metadata.header_length_in_bytes = (bit<16>)hdr.tcp.dataOffset << 2;
-        // meta.tcp_metadata.payload_length_in_bytes = (hdr.ipv4.totalLen - IPV4_LEN) - ((bit<16>)hdr.tcp.dataOffset << 2);
+        meta.tcp_metadata.options_length = meta.tcp_metadata.header_length - 16w160;
 
         transition select(meta.tcp_metadata.payload_length) {
-            0 : accept;
-            _ : maybe_parse_opcua;
+            0: accept;
+            default: maybe_parse_opcua;
         }
     }
 
     state maybe_parse_opcua {
-        transition select(hdr.tcp.dstPort) {         
-            8666 : parse_opcua_hdr;  
-            default : check_src_port;
+        transition select(hdr.tcp.dstPort) {
+            OPCUA_PORT: check_opcua_payload_length;
+            default: check_src_port;
         }
     }
 
     state check_src_port {
         transition select(hdr.tcp.srcPort) {
-            8666 : parse_opcua_hdr;
-            default : accept;
+            OPCUA_PORT: check_opcua_payload_length;
+            default: accept;
         }
     }
 
+    state check_opcua_payload_length {
+        transition select(meta.tcp_metadata.payload_length < OPCUA_HEADER_BITS) {
+            true: accept;
+            false: parse_opcua_after_options;
+        }
+    }
+
+    state parse_opcua_after_options {
+        transition select(meta.tcp_metadata.options_length) {
+            0: parse_opcua_hdr;
+            default: parse_tcp_options;
+        }
+    }
+
+    state parse_tcp_options {
+        packet.extract(hdr.tcp_options, (bit<32>)meta.tcp_metadata.options_length);
+        transition parse_opcua_hdr;
+    }
+
     state parse_opcua_hdr {
-        packet.extract(hdr.tcp_options);
-        packet.extract(hdr.opcua); 
+        packet.extract(hdr.opcua);
         transition select(hdr.opcua.messageType) {
-            OPN : parse_opcua_security_hdr1;
-            default : accept;
+            OPN: parse_opcua_security_hdr1;
+            default: accept;
         }
     }
 
@@ -200,7 +205,6 @@ parser MyParser(packet_in packet,
     }
 
     state parse_opcua_security_hdr2 {
-        // First I need to convert the securityPolicyUriLength to little endian
         hex1 = hdr.opcua_security_hdr1.securityPolicyUriLength[31:24];
         hex2 = hdr.opcua_security_hdr1.securityPolicyUriLength[23:16];
         hex3 = hdr.opcua_security_hdr1.securityPolicyUriLength[15:8];
@@ -209,9 +213,6 @@ parser MyParser(packet_in packet,
         policyUriLength_bits = (bit<32>)(hex4 ++ hex3 ++ hex2 ++ hex1);
         policyUriLength_bits = policyUriLength_bits * 32w8;
 
-        // Debugging logs
-        // log_msg("URI LENGTH BITS: {}", {policyUriLength_bits});
-        // log_msg("hex1: {}, hex2: {}, hex3: {}, hex4: {}", {hex1, hex2, hex3, hex4});
         packet.extract(hdr.opcua_security_hdr2_pol, policyUriLength_bits);
         transition parse_opcua_security_hdr3;
     }
@@ -219,7 +220,6 @@ parser MyParser(packet_in packet,
     state parse_opcua_security_hdr3 {
         packet.extract(hdr.opcua_security_hdr3_certLength);
 
-        // Convert the senderCertificateLength to little endian
         hex1 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[31:24];
         hex2 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[23:16];
         hex3 = hdr.opcua_security_hdr3_certLength.senderCertificateLength[15:8];
@@ -227,47 +227,48 @@ parser MyParser(packet_in packet,
 
         cert_bytes = (bit<32>)(hex4 ++ hex3 ++ hex2 ++ hex1);
         remaining = cert_bytes;
-        // log_msg("CERT LENGTH BYTES: {}", {cert_bytes});
-        cert_bits = cert_bytes * 32w8;
 
-        // Debugging logs
-        // log_msg("CERT LENGTH BITS: {}", {cert_bits});
-        // log_msg("hex1: {}, hex2: {}, hex3: {}, hex4: {}", {hex1, hex2, hex3, hex4});
-
-        transition select((bit<32>)(hdr.opcua_security_hdr3_certLength.senderCertificateLength)) {
-            // 0xffffffff is the "Null" string used for Security Policy None: accept for testing purposes, should be set to drop in production!
-            NULLCERTSTRING : accept;
-            _ : check_cert_length;
+        transition select((bit<32>)hdr.opcua_security_hdr3_certLength.senderCertificateLength) {
+            NULLCERTSTRING: accept;
+            default: check_cert_upper_bound;
         }
     }
 
+    state check_cert_upper_bound {
+        transition select(cert_bytes > MAX_CERT_BYTES) {
+            true: mark_certificate_too_large;
+            false: check_cert_length;
+        }
+    }
+
+    state mark_certificate_too_large {
+        meta.cert_too_large = 1;
+        transition accept;
+    }
+
     state check_cert_length {
-        // The last block is always the one with variable length
-        // log_msg("CERT LENGTH BYTES: {}", {cert_bytes});
         transition select(cert_bytes > 255) {
-            false : parse_certificate_only_ending_part;
-            true : parse_certificate;
+            false: parse_certificate_only_ending_part;
+            true: parse_certificate;
         }
     }
 
     state parse_certificate {
         packet.extract(hdr.opcuaSenderCertificate.next);
         remaining = remaining - 256;
-        // log_msg("CERT LENGTH BYTES REMAINING: {}", {remaining});
-        transition select(remaining > 255){
-            false : parse_certificate_ending_part;
-            true : parse_certificate;
+        transition select(remaining > 255) {
+            false: parse_certificate_ending_part;
+            true: parse_certificate;
         }
     }
 
     state parse_certificate_ending_part {
-        // We calculate the length of the last certificate block
         packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(remaining * 8));
         transition parse_opcua_security_hdr6_thumb;
     }
 
     state parse_certificate_only_ending_part {
-        packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(cert_bytes));
+        packet.extract(hdr.opcuaSenderCertificateFinal, (bit<32>)(cert_bytes * 8));
         transition parse_opcua_security_hdr6_thumb;
     }
 
@@ -277,24 +278,13 @@ parser MyParser(packet_in packet,
     }
 }
 
-/*************************************************************************
-************   C H E C K S U M    V E R I F I C A T I O N   *************
-*************************************************************************/
-
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
-    apply {  }
+    apply { }
 }
-
-/*************************************************************************
-**************  I N G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
 
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
-
-    bit<160> certThumbprint;
-
     action drop() {
         mark_to_drop(standard_metadata);
     }
@@ -323,72 +313,29 @@ control MyIngress(inout headers hdr,
             forward_to_port;
             drop;
         }
-        size = 8;
+        size = 256;
         default_action = drop;
     }
 
-    // table debug {
-	// 	key = {
-    //         hdr.ethernet.srcAddr: exact;
-    //         hdr.ethernet.dstAddr: exact;
-    //         hdr.ipv4.srcAddr: exact;
-    //         hdr.ipv4.dstAddr: exact;
-    //         hdr.tcp.srcPort: exact;
-    //         hdr.tcp.dstPort: exact;
-    //         hdr.tcp.sequence: exact;
-    //         hdr.tcp.ack: exact;
-    //         hdr.tcp.dataOffset: exact;
-    //         hdr.tcp.reserved: exact;
-    //         hdr.tcp.flags: exact;
-    //         hdr.tcp.window: exact;
-    //         hdr.tcp.checksum: exact;
-    //         hdr.tcp.urgentPtr: exact;
-    //         hdr.tcp_options.nop: exact;
-    //         hdr.tcp_options.nop2: exact;
-    //         hdr.tcp_options.timestamps : exact;
-	// 		hdr.opcua.messageType : exact;
-    //         hdr.opcua.isFinal : exact;
-    //         hdr.opcua.messageSize : exact;
-    //         hdr.opcua_security_hdr1.secureChannelId : exact;
-    //         hdr.opcua_security_hdr1.securityPolicyUriLength : exact;
-    //         hdr.opcua_security_hdr3_certLength.senderCertificateLength : exact;
-    //         hdr.opcua_security_hdr_thumb.receiverCertificateThumbprintLength : exact;
-    //         hdr.opcua_security_hdr_thumb.receiverCertificateThumbprint : exact;
-	// 	}
-	// actions = { NoAction; }
-	// const default_action = NoAction;
-	// }
-
     apply {
         dmac_forward.apply();
-        if (hdr.opcua.messageType == OPN) {
-            // debug.apply();
+        if (meta.cert_too_large == 1w1) {
+            drop();
+        } else if (hdr.opcua_security_hdr_thumb.isValid()) {
             thumbprint_table.apply();
         }
     }
 }
 
-/*************************************************************************
-****************  E G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
-
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    apply {  }
+    apply { }
 }
-
-/*************************************************************************
-*************   C H E C K S U M    C O M P U T A T I O N   **************
-*************************************************************************/
 
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
-    apply {  }
+    apply { }
 }
-
-/*************************************************************************
-***********************  D E P A R S E R  *******************************
-*************************************************************************/
 
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
@@ -406,11 +353,6 @@ control MyDeparser(packet_out packet, in headers hdr) {
     }
 }
 
-/*************************************************************************
-***********************  S W I T C H  *******************************
-*************************************************************************/
-
-//switch architecture
 V1Switch(
     MyParser(),
     MyVerifyChecksum(),

@@ -53,7 +53,9 @@ If `run_otsec_overhead.sh` reports missing images, rebuild before running the ca
 ## 2) Select P4 Variant (Manual Check)
 ```bash
 cd testbeds/ot-security-testbed/kathara-otsec-p4
-./set_p4_variant.sh forward
+./set_p4_variant.sh ip_forward
+# or
+./set_p4_variant.sh opcua_forward
 # or
 ./set_p4_variant.sh extraction
 ```
@@ -64,9 +66,10 @@ cd testbeds/ot-security-testbed/kathara-otsec-p4
 ```bash
 ./run_otsec_overhead.sh \
   --runs 1 \
-  --variant both \
+  --variant all \
   --duration-sec 120 \
   --warmup-sec 10 \
+  --stimulate \
   --out-dir ../../../tests/TESTBEDS/otsec_overhead_smoke
 ```
 
@@ -74,9 +77,10 @@ cd testbeds/ot-security-testbed/kathara-otsec-p4
 ```bash
 ./run_otsec_overhead.sh \
   --runs 3 \
-  --variant both \
+  --variant all \
   --duration-sec 14400 \
   --warmup-sec 30 \
+  --stimulate \
   --out-dir ../../../tests/TESTBEDS/otsec_overhead_main
 ```
 
@@ -84,16 +88,19 @@ cd testbeds/ot-security-testbed/kathara-otsec-p4
 ```bash
 python3 ./analyze_otsec_overhead.py \
   --input-dir ../../../tests/TESTBEDS/otsec_overhead_main \
-  --output-dir ../../../tests/TESTBEDS/otsec_overhead_main
+  --output-dir ../../../tests/TESTBEDS/otsec_overhead_main \
+  --require-extraction-opn-cert
 ```
 
 Generated artifacts:
 - `per_run.csv`
 - `summary.csv`
+- `quality.csv`
 - `report.md`
 
 ## Output Layout
-- `run_XX/forward/*.pcap`
+- `run_XX/ip_forward/*.pcap`
+- `run_XX/opcua_forward/*.pcap`
 - `run_XX/extraction/*.pcap`
 - `run_XX/<variant>/metadata.env`
 - `run_XX/<variant>/s1.log`

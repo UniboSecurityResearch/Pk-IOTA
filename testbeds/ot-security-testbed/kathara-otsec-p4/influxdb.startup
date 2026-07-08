@@ -14,3 +14,10 @@ add_static_neigh eth0 10.11.0.21 02:11:00:00:00:21
 add_static_neigh eth0 10.11.0.22 02:11:00:00:00:22
 add_static_neigh eth0 10.11.0.23 02:11:00:00:00:23
 add_static_neigh eth0 10.11.0.24 02:11:00:00:00:24
+
+# Kathara does not run the image ENTRYPOINT: start influxd (telegraf output).
+if [ -f /etc/influxdb/influxdb.conf ]; then
+  nohup influxd -config /etc/influxdb/influxdb.conf > /shared/influxdb.log 2>&1 &
+else
+  nohup influxd > /shared/influxdb.log 2>&1 &
+fi

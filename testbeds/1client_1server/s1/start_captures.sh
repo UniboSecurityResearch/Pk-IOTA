@@ -10,7 +10,7 @@ for iface in eth0 eth1; do
   for direction in in out; do
     out="/shared/s1_${iface}_${direction}.pcap"
     log="/shared/tcpdump_${iface}_${direction}.log"
-    nohup tcpdump -U -Q "$direction" -i "$iface" -w "$out" tcp port "$PORT" >"$log" 2>&1 &
+    nohup tcpdump -s 0 -U -Q "$direction" -i "$iface" -w "$out" tcp port "$PORT" >"$log" 2>&1 &
     pid="$!"
     echo "$pid" > "/shared/tcpdump_${iface}_${direction}.pid"
   done

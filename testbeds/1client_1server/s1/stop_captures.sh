@@ -10,7 +10,8 @@ for pidf in /shared/tcpdump_eth0_in.pid /shared/tcpdump_eth0_out.pid /shared/tcp
   fi
 done
 
-pkill tcpdump >/dev/null 2>&1 || true
+pkill -TERM tcpdump >/dev/null 2>&1 || true
 sleep 1
+pkill -KILL tcpdump >/dev/null 2>&1 || true
 
 echo "capture_stopped"

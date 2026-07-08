@@ -57,9 +57,8 @@ kathara lstart --noterminals
 ```
 
 Startup behavior:
-- Endpoint images are wrappers (`*:kathara-net`) built from the original MOTRA images with only `iproute2` added.
-- Original container logic is unchanged (`/startup.sh` or `/usr/src/app/entrypoint.sh`).
-- Compose-equivalent OPC UA environment variables are set in `lab.conf` via `device[env]`.
+- Endpoint images are secure wrappers (`*:kathara-net`) built from the original MOTRA images with `iproute2`, patched app files, and a shared OPC UA PKI.
+- Compose-equivalent and OPC UA security environment variables are set in `lab.conf` via `device[env]`.
 
 Stop:
 
@@ -69,16 +68,16 @@ kathara lclean
 
 ## Overhead benchmark
 
-Collect paired runs (`forward` then `extraction`):
+Collect comparable runs (`ip_forward`, `opcua_forward`, then `extraction`):
 
 ```bash
-./run_motra_overhead.sh --runs 3 --variant both --duration-sec 3600 --warmup-sec 30 --out-dir ./overhead_runs_main
+./run_motra_overhead.sh --runs 3 --variant all --duration-sec 3600 --warmup-sec 30 --out-dir ./overhead_runs_main
 ```
 
 Analyze:
 
 ```bash
-python3 ./analyze_motra_overhead.py --input-dir ./overhead_runs_main
+python3 ./analyze_motra_overhead.py --input-dir ./overhead_runs_main --require-extraction-opn-cert
 ```
 
 Recommended campaign:
@@ -100,4 +99,4 @@ kathara exec water_tank_simulation ping -c 3 10.10.40.11
 ## Notes
 
 - This is a network-level reproduction of the Compose topology with one P4 switch per original Docker network.
-- Switch commands program only L2 forwarding (`dmac_forward`) and keep default drop behavior.
+- Switch commands program L2 forwarding (`dmac_forward`); extraction runs also program allowed OPC UA receiver thumbprints.
