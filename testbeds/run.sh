@@ -549,7 +549,7 @@ run_formal_checks() {
 
   local summary="$out_dir/formal_quick_summary.txt"
   : > "$summary"
-  rg -n "summary of summaries|verified|falsified|processing time" "$out_dir/"*.txt >>"$summary" || true
+  grep -nE "summary of summaries|verified|falsified|processing time" "$out_dir/"*.txt >>"$summary" 2>/dev/null || true
   log "Formal quick summary: $summary"
   cat "$summary"
 }

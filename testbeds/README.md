@@ -42,6 +42,35 @@ Use `asyncua-toolbox` when you need troubleshooting/traffic inspection. Use `asy
 - `capinfos` (`wireshark-common`)
 - Optional for formal checks: `tamarin-prover`, `maude`
 
+## Deploying on a New Server (read before running campaigns)
+1. **Jumbo frames.** The cert-size campaign (and any extraction run with
+   certificates larger than ~1.3 KB) needs jumbo frames end-to-end: the P4
+   parser has no TCP reassembly, so the whole OPN message including the
+   certificate must fit in ONE frame. Container MTU alone is not enough — the
+   Kathara collision-domain fabric must pass jumbo frames (the VDE network
+   plugin does; the Linux-bridge plugin typically drops them). The cert-size
+   runner verifies the jumbo path with a DF ping and fails fast with a
+   diagnostic.
+2. **Locally-built images.** MOTRA (`*:kathara-net`) and OTSEC
+   (`telegraf:kathara-net`, `ot-*:kathara-net`) images are NOT pullable: run
+   `./build_kathara_images.sh` in each lab on the target machine (OTSEC also
+   requires `certificates/create-certs.sh` FIRST — certs are baked into the
+   images; regenerating certs without rebuilding desynchronizes the P4
+   thumbprint table from the wire).
+   Kathara keeps the image ENTRYPOINT as PID1 (it only overrides the CMD): the
+   OTSEC wrappers therefore reset it (`ENTRYPOINT []`) and services are
+   launched by the `.startup` scripts after network configuration. If openplc/
+   telegraf/industrial_process containers show `Exited (1)` right after
+   lstart, you are running wrapper images built BEFORE this fix — rebuild.
+3. **Never add `--log-console` to the measurement switches.** Per-packet debug
+   logging slows BMv2 enough to drop packets at its receive socket under
+   replay load and contaminates the latency measurements.
+4. **Smoke first.** Validate with `./testbeds/run.sh --profile smoke` before
+   the multi-hour main profile; smoke enables `--fail-on-quality`.
+5. **Failures are isolated.** Runners record failed runs in
+   `<out-dir>/failed_runs.txt` and continue; `run.sh` runs all requested
+   campaigns and reports `COMPLETED WITH FAILURES` at the end.
+
 ## Default Results Path
 When using `run.sh` without `--results-dir`, outputs are written to:
 - `tests/TESTBEDS`

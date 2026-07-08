@@ -14,7 +14,7 @@ echo "[s1.startup] starting simple_switch" >>"$LOG_FILE"
 simple_switch \
   -i 1@eth0 -i 2@eth1 -i 3@eth2 -i 4@eth3 -i 5@eth4 \
   -i 6@eth5 -i 7@eth6 -i 8@eth7 -i 9@eth8 \
-  --log-console active.json >>"$LOG_FILE" 2>&1 &
+  active.json >>"$LOG_FILE" 2>&1 &
 
 wait_sec=0
 while ! pgrep simple_switch >/dev/null 2>&1; do

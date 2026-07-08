@@ -181,7 +181,7 @@ mkdir -p "$REPLAY_STARTUP_BACKUP_DIR"
 
 # Force switch logs into /shared/switch.log so we can copy it after each run.
 sed \
-  -e 's|^simple_switch .*|simple_switch -i 1@eth0 -i 2@eth1 --log-console opcua_extraction.json > /shared/switch.log 2>\&1 \&|' \
+  -e 's|^simple_switch .*|simple_switch -i 1@eth0 -i 2@eth1 opcua_extraction.json > /shared/switch.log 2>\&1 \&|' \
   -e 's|^tcpdump -i eth0 -w .*|env PATH=/usr/sbin:/usr/bin:/sbin:/bin:$PATH tcpdump -s 0 -U -Q in -i eth0 -w /shared/s1_eth0_in.pcap tcp port 8666 >/shared/tcpdump_eth0_in.log 2>\&1 \&\nenv PATH=/usr/sbin:/usr/bin:/sbin:/bin:$PATH tcpdump -s 0 -U -Q out -i eth0 -w /shared/s1_eth0_out.pcap tcp port 8666 >/shared/tcpdump_eth0_out.log 2>\&1 \&|' \
   -e 's|^tcpdump -i eth1 -w .*|env PATH=/usr/sbin:/usr/bin:/sbin:/bin:$PATH tcpdump -s 0 -U -Q in -i eth1 -w /shared/s1_eth1_in.pcap tcp port 8666 >/shared/tcpdump_eth1_in.log 2>\&1 \&\nenv PATH=/usr/sbin:/usr/bin:/sbin:/bin:$PATH tcpdump -s 0 -U -Q out -i eth1 -w /shared/s1_eth1_out.pcap tcp port 8666 >/shared/tcpdump_eth1_out.log 2>\&1 \&|' \
   "$STARTUP_ORIG" > "$STARTUP_FILE"

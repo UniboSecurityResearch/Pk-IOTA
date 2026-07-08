@@ -31,13 +31,23 @@ RUN set -eux; \
 EOD
 }
 
+# Kathara overrides only the container CMD, NOT the ENTRYPOINT. An image whose
+# ENTRYPOINT is its application (openplc, telegraf, the simulator) runs that
+# application as PID1 at container creation — BEFORE the .startup script has
+# configured interfaces and /etc/hosts — so it crashes and takes the whole
+# container down. Wrappers for such images must reset the ENTRYPOINT; their
+# service is then launched by the .startup script in the right order.
 build_wrapper() {
   local base="$1"
   local tag="$2"
+  local strip_entrypoint="${3:-}"
   cat > "$TMP_DIR/Dockerfile" <<EOD
 FROM ${base}
 EOD
   write_iproute_layer >> "$TMP_DIR/Dockerfile"
+  if [[ "$strip_entrypoint" == "strip-entrypoint" ]]; then
+    echo 'ENTRYPOINT []' >> "$TMP_DIR/Dockerfile"
+  fi
   docker build -t "$tag" "$TMP_DIR"
 }
 
@@ -62,6 +72,7 @@ COPY plc.crt.der /opt/otsec/certs/plc.crt.der
 RUN chmod 0644 /opt/otsec/certs/telegraf.crt /opt/otsec/certs/plc.crt.der && chmod 0640 /opt/otsec/certs/telegraf.key
 EOD
   write_iproute_layer >> "$ctx/Dockerfile"
+  echo 'ENTRYPOINT []' >> "$ctx/Dockerfile"
   docker build -t telegraf:kathara-net "$ctx"
 }
 
@@ -84,6 +95,7 @@ COPY industrial-process.pem /usr/src/simulator/industrial-process.pem
 COPY telegraf.der /usr/src/simulator/telegraf.der
 EOD
   write_iproute_layer >> "$ctx/Dockerfile"
+  echo 'ENTRYPOINT []' >> "$ctx/Dockerfile"
   docker build -t ot-industrial-process:kathara-net "$ctx"
 }
 
@@ -114,6 +126,7 @@ COPY ca.crt.der /workdir/OpenPLC_v3/etc/PKI/trusted/certs/ca.crt.der
 COPY ca.crl /workdir/OpenPLC_v3/etc/PKI/trusted/crl/ca.crl
 EOD
   write_iproute_layer >> "$ctx/Dockerfile"
+  echo 'ENTRYPOINT []' >> "$ctx/Dockerfile"
   docker build -t ot-openplc:kathara-net "$ctx"
 }
 
@@ -126,14 +139,16 @@ docker build -t ot-shellinabox:latest -f "$ROOT_DIR/attacker/shellinabox.Dockerf
 
 echo "Building wrapper images (*:kathara-net) with iproute2..."
 build_telegraf_wrapper
-build_wrapper influxdb:1.8.10 influxdb:kathara-net
+build_wrapper influxdb:1.8.10 influxdb:kathara-net strip-entrypoint
 build_wrapper chronograf:1.9.4 chronograf:kathara-net
 build_wrapper kapacitor:1.6.4 kapacitor:kathara-net
 build_industrial_process_wrapper
 build_openplc_wrapper
 build_wrapper ot-fuxa:latest ot-fuxa:kathara-net
 build_wrapper ot-attacker:latest ot-attacker:kathara-net
-build_wrapper ot-shellinabox:latest ot-shellinabox:kathara-net
+# shellinabox's entrypoint exits(4) under Kathara (SIAB env incomplete); it is
+# decorative for the overhead campaign, so let the container idle instead.
+build_wrapper ot-shellinabox:latest ot-shellinabox:kathara-net strip-entrypoint
 
 cp "$BASE_DIR/common_service.sh" "$BASE_DIR/shared/common_service.sh"
 chmod 644 "$BASE_DIR/shared/common_service.sh"

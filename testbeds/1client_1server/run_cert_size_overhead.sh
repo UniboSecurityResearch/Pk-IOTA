@@ -330,6 +330,11 @@ run_variant_once() {
   }
 
   # Export certs to shared host-visible path and install the trusted peers.
+  # The trusted-cert directories are empty in the repo, so git does not track
+  # them and they are missing on a fresh checkout: create them explicitly.
+  kathara exec -d "$LAB_DIR" h1 -- mkdir -p /certificates/trusted/certs >/dev/null || return 1
+  kathara exec -d "$LAB_DIR" h2 -- mkdir -p /certificates/trusted/certs >/dev/null || return 1
+
   kathara exec -d "$LAB_DIR" h2 -- cp /server-certificate.der /shared/server-certificate.der >/dev/null || return 1
   kathara exec -d "$LAB_DIR" h1 -- cp /client-certificate.der /shared/client-certificate.der >/dev/null || return 1
 
