@@ -1,2 +1,0 @@
-table_add dmac_forward forward_to_port 02:00:00:10:01:01 => 1
-table_add dmac_forward forward_to_port 02:00:00:10:01:02 => 2

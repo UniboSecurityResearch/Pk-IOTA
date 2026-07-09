@@ -1,4 +1,0 @@
-table_clear thumbprint_table
-table_add thumbprint_table NoAction 0xdebe02b12e64f178a7d75f17b56bdf4e90b262dc =>
-table_add thumbprint_table NoAction 0x0321bb29df078d63df8df614fa44b2afe70e4272 =>
-table_dump thumbprint_table

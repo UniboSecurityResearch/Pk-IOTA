@@ -1,4 +1,0 @@
-table_add dmac_forward forward_to_port 02:00:00:10:04:01 => 1
-table_add dmac_forward forward_to_port 02:00:00:10:04:02 => 2
-table_add thumbprint_table NoAction 0xd9594c96472d762268d488125fe3f1e29a8a9f8f =>
-table_add thumbprint_table NoAction 0xc2771027dd61d23dd162bcfa5d8e5403a984f019 =>
