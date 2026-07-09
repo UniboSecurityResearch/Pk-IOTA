@@ -1,0 +1,472 @@
+maude tool: 'maude'
+ checking version: 3.1. OK.
+ checking installation: OK.
+Deprecation Warning: using 'axiom' is retired notation, replace all uses of 'axiom' by 'restriction'.
+[Theory PK_IOTA_OPCUA] Theory loaded
+[Theory PK_IOTA_OPCUA] Theory translated
+[Theory PK_IOTA_OPCUA] Derivation checks started
+[Theory PK_IOTA_OPCUA] Derivation checks ended
+[Theory PK_IOTA_OPCUA] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
+theory PK_IOTA_OPCUA
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, h/1, pair/2, pk/1, sign/2, snd/1,
+           true/0, verify/3
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
+
+rule (modulo E) genServerKey:
+   [ Fr( ~x ) ]
+  --[ ServerKey( $S, pk(~x) ) ]->
+   [
+   !Ltk( $S, ~x ), Out( <$S, pk(~x)> ), Out_Ledger( 'Admin', <$S, pk(~x)> )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) genClientKey:
+   [ Fr( ~x ) ]
+  --[ ClientKey( $C, pk(~x) ) ]->
+   [
+   !Ltk( $C, ~x ), Out( <$C, pk(~x)> ), Out_Ledger( 'Admin', <$C, pk(~x)> )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) LedgerOut:
+   [ Out_Ledger( 'Admin', x ) ]
+  --[ LedgerOut( 'Admin', x ) ]->
+   [ !Auth_Ledger( 'Admin', x ), Out( <'Admin', x> ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) LedgerIn:
+   [ !Auth_Ledger( 'Admin', x ), In( <'Admin', x> ) ]
+  --[ LedgerIn( 'Admin', x ) ]->
+   [ In_Ledger( 'Admin', x ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) ControllerInstallRule:
+   [ In_Ledger( 'Admin', <Id, Pk> ) ]
+  --[ InstallRule( 'Controller', h(Pk) ) ]->
+   [ !Sec_Ctrl_Sw( 'Controller', 'Switch', h(Pk) ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) SwitchReceiveRule:
+   [ !Sec_Ctrl_Sw( 'Controller', 'Switch', th ) ]
+  --[ RuleInstalled( 'Switch', th ) ]->
+   [ !AllowedThumb( th ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) NetSend_OSCReq:
+   [ Out_OSCReq( $C, $S, pkC, payload ) ]
+  --[ NetSend_OSCReq( $C, $S, pkC ) ]->
+   [ !Pending_OSCReq( $C, $S, pkC, payload ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) SwitchForward_OSCReq:
+   [ !Pending_OSCReq( $C, $S, pkC, payload ), !AllowedThumb( h(pkC) ) ]
+  --[ SwitchAllowReq( 'Switch', $C, $S, h(pkC) ) ]->
+   [ In_OSCReq( $S, <$C, pkC, payload> ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) NetSend_OSCRes:
+   [ Out_OSCRes( $S, $C, pkS, payload ) ]
+  --[ NetSend_OSCRes( $S, $C, pkS ) ]->
+   [ !Pending_OSCRes( $S, $C, pkS, payload ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) SwitchForward_OSCRes:
+   [ !Pending_OSCRes( $S, $C, pkS, payload ), !AllowedThumb( h(pkS) ) ]
+  --[ SwitchAllowRes( 'Switch', $S, $C, h(pkS) ) ]->
+   [ In_OSCRes( $C, <$S, pkS, payload> ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) Init:
+   [ ] --[ Init( $C, $S ) ]-> [ Out( 'GEReq' ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) Resp_Init:
+   [ In( 'GEReq' ), !Ltk( $S, ~x ) ]
+  --[ Resp( $C, $S, pk(~x) ) ]->
+   [ Out( <'GERes', pk(~x), 'SignEnc', $SP, $UP> ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) Resp_Client:
+   [ In( <'GERes', keyS, 'SignEnc', sp, up> ), !Ltk( $C, ~x ), Fr( ~nc ) ]
+  --[ Resp_Client( $C, $S, ~nc, keyS, pk(~x) ), WitnessNc( $C, $S, ~nc )
+  ]->
+   [
+   Out_OSCReq( $C, $S, pk(~x),
+               <aenc(<'OSCReq', $C, pk(~x), ~nc>, keyS), 
+                sign(h(<'OSCReq', $C, pk(~x), ~nc>), ~x), h(<'OSCReq', $C, pk(~x), ~nc>)>
+   )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) Resp_Server:
+   [
+   !Ltk( $S, ~xs ),
+   In_OSCReq( $S,
+              <$C, pkC, aenc(<'OSCReq', $C, pkC, nc>, pk(~xs)), sig, 
+               h(<'OSCReq', $C, pkC, nc>)>
+   ),
+   Fr( ~ns )
+   ]
+  --[
+  Eq( verify(sig, h(<'OSCReq', $C, pkC, nc>), pkC), true ),
+  Resp_Server( $C, $S, ~ns, pkC, pk(~xs) ), RequestNc( $C, $S, nc ),
+  WitnessNs( $S, $C, ~ns )
+  ]->
+   [
+   Out_OSCRes( $S, $C, pk(~xs),
+               <aenc(<'OSCRes', $S, ~ns, $ST, $TTL>, pkC), 
+                sign(h(<'OSCRes', $S, ~ns, $ST, $TTL>), ~xs), 
+                h(<'OSCRes', $S, ~ns, $ST, $TTL>)>
+   )
+   ]
+
+  /*
+  rule (modulo AC) Resp_Server:
+     [
+     !Ltk( $S, ~xs ),
+     In_OSCReq( $S,
+                <$C, pkC, aenc(<'OSCReq', $C, pkC, nc>, pk(~xs)), sig, 
+                 h(<'OSCReq', $C, pkC, nc>)>
+     ),
+     Fr( ~ns )
+     ]
+    --[
+    Eq( z, true ), Resp_Server( $C, $S, ~ns, pkC, pk(~xs) ),
+    RequestNc( $C, $S, nc ), WitnessNs( $S, $C, ~ns )
+    ]->
+     [
+     Out_OSCRes( $S, $C, pk(~xs),
+                 <aenc(<'OSCRes', $S, ~ns, $ST, $TTL>, pkC), 
+                  sign(h(<'OSCRes', $S, ~ns, $ST, $TTL>), ~xs), 
+                  h(<'OSCRes', $S, ~ns, $ST, $TTL>)>
+     )
+     ]
+    variants (modulo AC)
+    1. $C    = $C.22
+       nc    = nc.28
+       pkC   = pkC.29
+       sig   = sig.30
+       z     = verify(sig.30, h(<'OSCReq', $C.22, pkC.29, nc.28>), pkC.29)
+    
+    2. $C    = $C.33
+       nc    = nc.39
+       pkC   = pk(x.64)
+       sig   = sign(h(<'OSCReq', $C.33, pk(x.64), nc.39>), x.64)
+       z     = true
+  */
+
+rule (modulo E) Auth_Client:
+   [
+   !Ltk( $C, ~xc ),
+   In_OSCRes( $C,
+              <$S, pkS, aenc(<'OSCRes', $S, ns, st, ttl>, pk(~xc)), sig, 
+               h(<'OSCRes', $S, ns, st, ttl>)>
+   )
+   ]
+  --[
+  Eq( verify(sig, h(<'OSCRes', $S, ns, st, ttl>), pkS), true ),
+  RequestNs( $S, $C, ns )
+  ]->
+   [ ]
+
+  /*
+  rule (modulo AC) Auth_Client:
+     [
+     !Ltk( $C, ~xc ),
+     In_OSCRes( $C,
+                <$S, pkS, aenc(<'OSCRes', $S, ns, st, ttl>, pk(~xc)), sig, 
+                 h(<'OSCRes', $S, ns, st, ttl>)>
+     )
+     ]
+    --[ Eq( z, true ), RequestNs( $S, $C, ns ) ]->
+     [ ]
+    variants (modulo AC)
+    1. $S    = $S.12
+       ns    = ns.14
+       pkS   = pkS.15
+       sig   = sig.16
+       st    = st.17
+       ttl   = ttl.18
+       z     = verify(sig.16, h(<'OSCRes', $S.12, ns.14, st.17, ttl.18>),
+                      pkS.15)
+    
+    2. $S    = $S.17
+       ns    = ns.19
+       pkS   = pk(x.29)
+       sig   = sign(h(<'OSCRes', $S.17, ns.19, st.22, ttl.23>), x.29)
+       st    = st.22
+       ttl   = ttl.23
+       z     = true
+  */
+
+restriction Equality:
+  "∀ x y #i. (Eq( x, y ) @ #i) ⇒ (x = y)"
+  // safety formula
+
+  /*
+  expanded formula:
+  "∀ x y #i. (Eq( x, y ) @ #i) ⇒ (x = y)"
+  */
+
+lemma Executable:
+  exists-trace "∃ C S ns #i. WitnessNs( S, C, ns ) @ #i"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ C S ns #i. (WitnessNs( S, C, ns ) @ #i)"
+*/
+simplify
+solve( !Ltk( $S, ~xs ) ▶₀ #i )
+  case genClientKey
+  solve( In_OSCReq( $S,
+                    <$C, pk(x), aenc(<'OSCReq', $C, pk(x), nc>, pk(~xs)), 
+                     sign(h(<'OSCReq', $C, pk(x), nc>), x), h(<'OSCReq', $C, pk(x), nc>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCReq_case_1
+    solve( !KU( pk(~xs) ) @ #vk.3 )
+      case LedgerOut
+      solve( !KU( pk(~x) ) @ #vk.13 )
+        case LedgerOut
+        SOLVED // trace found
+      qed
+    qed
+  qed
+qed
+
+lemma Key_secrecy:
+  all-traces
+  "∀ C S nc ns keyS keyC #i #j.
+    ((Resp_Server( C, S, ns, keyC, keyS ) @ #i) ∧
+     (Resp_Client( C, S, nc, keyS, keyC ) @ #j)) ⇒
+    (∀ #k. (K( h(<nc, ns>) ) @ #k) ⇒ (⊥))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ C S nc ns keyS keyC #i #j.
+  (Resp_Server( C, S, ns, keyC, keyS ) @ #i) ∧
+  (Resp_Client( C, S, nc, keyS, keyC ) @ #j)
+ ∧
+  ∃ #k. (K( h(<nc, ns>) ) @ #k)"
+*/
+simplify
+solve( !Ltk( $S, ~xs ) ▶₀ #i )
+  case genClientKey
+  solve( In_OSCReq( $S,
+                    <$C, pk(~x), aenc(<'OSCReq', $C, pk(~x), nc>, pk(~xs)), 
+                     sign(h(<'OSCReq', $C, pk(~x), nc>), ~x), h(<'OSCReq', $C, pk(~x), nc>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCReq_case_1
+    solve( !Ltk( $C, ~x ) ▶₁ #j )
+      case genServerKey
+      solve( !KU( h(<~nc.1, ~ns>) ) @ #vk.12 )
+        case c_h
+        by solve( !KU( ~nc.1 ) @ #vk.22 )
+      qed
+    qed
+  next
+    case SwitchForward_OSCReq_case_2
+    solve( !Ltk( $C, ~x ) ▶₁ #j )
+      case genClientKey
+      solve( !KU( h(<~nc.1, ~ns>) ) @ #vk.12 )
+        case c_h
+        by solve( !KU( ~nc.1 ) @ #vk.22 )
+      qed
+    qed
+  qed
+next
+  case genServerKey
+  solve( In_OSCReq( $S,
+                    <$C, pk(~x), aenc(<'OSCReq', $C, pk(~x), nc>, pk(~xs)), 
+                     sign(h(<'OSCReq', $C, pk(~x), nc>), ~x), h(<'OSCReq', $C, pk(~x), nc>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCReq_case_1
+    solve( !Ltk( $C, ~x ) ▶₁ #j )
+      case genServerKey
+      solve( !KU( h(<~nc.1, ~ns>) ) @ #vk.12 )
+        case c_h
+        by solve( !KU( ~nc.1 ) @ #vk.22 )
+      qed
+    qed
+  next
+    case SwitchForward_OSCReq_case_2
+    solve( !Ltk( $C, ~x ) ▶₁ #j )
+      case genClientKey
+      solve( !KU( h(<~nc.1, ~ns>) ) @ #vk.12 )
+        case c_h
+        by solve( !KU( ~nc.1 ) @ #vk.22 )
+      qed
+    qed
+  qed
+qed
+
+lemma Order:
+  all-traces
+  "∀ C S nc ns pkc pks #i #j #k #l.
+    ((((Init( C, S ) @ #i) ∧ (Resp( C, S, pks ) @ #j)) ∧
+      (Resp_Client( C, S, nc, pks, pkc ) @ #k)) ∧
+     (Resp_Server( C, S, ns, pkc, pks ) @ #l)) ⇒
+    (((#i < #j) ∧ (#j < #k)) ∧ (#k < #l))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ C S nc ns pkc pks #i #j #k #l.
+  (Init( C, S ) @ #i) ∧
+  (Resp( C, S, pks ) @ #j) ∧
+  (Resp_Client( C, S, nc, pks, pkc ) @ #k) ∧
+  (Resp_Server( C, S, ns, pkc, pks ) @ #l)
+ ∧
+  ((¬(#i < #j)) ∨ (¬(#j < #k)) ∨ (¬(#k < #l)))"
+*/
+simplify
+solve( (¬(#i < #j))  ∥ (¬(#j < #k))  ∥ (¬(#k < #l)) )
+  case case_1
+  solve( !Ltk( $S, ~x ) ▶₁ #j )
+    case genClientKey
+    solve( !Ltk( $C, ~x.1 ) ▶₁ #k )
+      case genClientKey
+      solve( !Ltk( $S, ~x ) ▶₀ #l )
+        case genClientKey
+        solve( In_OSCReq( $S,
+                          <$C, pk(~x.1), aenc(<'OSCReq', $C, pk(~x.1), nc.1>, pk(~x)), 
+                           sign(h(<'OSCReq', $C, pk(~x.1), nc.1>), ~x.1), 
+                           h(<'OSCReq', $C, pk(~x.1), nc.1>)>
+               ) ▶₁ #l )
+          case SwitchForward_OSCReq
+          solve( !KU( pk(~x) ) @ #vk.5 )
+            case LedgerOut
+            solve( !KU( pk(~x.1) ) @ #vk.20 )
+              case LedgerOut
+              SOLVED // trace found
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+lemma No_Rogue_Client:
+  all-traces
+  "∀ C S nc #i.
+    (RequestNc( C, S, nc ) @ #i) ⇒
+    (∃ #j. (WitnessNc( C, S, nc ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ C S nc #i.
+  (RequestNc( C, S, nc ) @ #i)
+ ∧
+  ∀ #j. (WitnessNc( C, S, nc ) @ #j) ⇒ ¬(#j < #i)"
+*/
+simplify
+solve( !Ltk( $S, ~xs ) ▶₀ #i )
+  case genClientKey
+  solve( In_OSCReq( $S,
+                    <$C, pk(x), aenc(<'OSCReq', $C, pk(x), nc>, pk(~xs)), 
+                     sign(h(<'OSCReq', $C, pk(x), nc>), x), h(<'OSCReq', $C, pk(x), nc>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCReq_case_1
+    by contradiction /* from formulas */
+  next
+    case SwitchForward_OSCReq_case_2
+    by contradiction /* from formulas */
+  qed
+next
+  case genServerKey
+  solve( In_OSCReq( $S,
+                    <$C, pk(x), aenc(<'OSCReq', $C, pk(x), nc>, pk(~xs)), 
+                     sign(h(<'OSCReq', $C, pk(x), nc>), x), h(<'OSCReq', $C, pk(x), nc>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCReq_case_1
+    by contradiction /* from formulas */
+  next
+    case SwitchForward_OSCReq_case_2
+    by contradiction /* from formulas */
+  qed
+qed
+
+lemma No_Rogue_Server:
+  all-traces
+  "∀ S C ns #i.
+    (RequestNs( S, C, ns ) @ #i) ⇒
+    (∃ #j. (WitnessNs( S, C, ns ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ S C ns #i.
+  (RequestNs( S, C, ns ) @ #i)
+ ∧
+  ∀ #j. (WitnessNs( S, C, ns ) @ #j) ⇒ ¬(#j < #i)"
+*/
+simplify
+solve( !Ltk( $C, ~xc ) ▶₀ #i )
+  case genClientKey
+  solve( In_OSCRes( $C,
+                    <$S, pk(x), aenc(<'OSCRes', $S, ns, st, ttl>, pk(~xc)), 
+                     sign(h(<'OSCRes', $S, ns, st, ttl>), x), h(<'OSCRes', $S, ns, st, ttl>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCRes_case_1
+    by contradiction /* from formulas */
+  next
+    case SwitchForward_OSCRes_case_2
+    by contradiction /* from formulas */
+  qed
+next
+  case genServerKey
+  solve( In_OSCRes( $C,
+                    <$S, pk(x), aenc(<'OSCRes', $S, ns, st, ttl>, pk(~xc)), 
+                     sign(h(<'OSCRes', $S, ns, st, ttl>), x), h(<'OSCRes', $S, ns, st, ttl>)>
+         ) ▶₁ #i )
+    case SwitchForward_OSCRes_case_1
+    by contradiction /* from formulas */
+  next
+    case SwitchForward_OSCRes_case_2
+    by contradiction /* from formulas */
+  qed
+qed
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.1
+Git revision: 82780bbaf3328a45f624ddb41e51bf75425f851c (with uncommited changes), branch: HEAD
+Compiled at: 2026-05-13 12:23:27.218856779 UTC
+*/
+
+end
+
+==============================================================================
+summary of summaries:
+
+analyzed: pk-iota.spthy
+
+  processing time: 4.92s
+  
+  Executable (exists-trace): verified (6 steps)
+  Key_secrecy (all-traces): verified (16 steps)
+  Order (all-traces): falsified - found trace (9 steps)
+  No_Rogue_Client (all-traces): verified (8 steps)
+  No_Rogue_Server (all-traces): verified (8 steps)
+
+==============================================================================

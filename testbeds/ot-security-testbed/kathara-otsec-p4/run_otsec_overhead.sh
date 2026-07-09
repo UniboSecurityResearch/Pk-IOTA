@@ -276,6 +276,13 @@ start_captures() {
 
 stop_captures() {
   local sw waited running
+  # Stop the INGRESS captures first ('-Q in' or BPF 'inbound') and give
+  # in-flight packets time to exit: killing everything at once records ingress
+  # packets whose egress copy was never captured -> fake drops at the boundary.
+  for sw in "${SWITCHES[@]}"; do
+    kathara exec -d "$LAB_DIR" "$sw" -- sh -lc "pkill -TERM -f 'tcpdump.*(Q in|inbound)' 2>/dev/null || true" >/dev/null 2>&1 || true
+  done
+  sleep 2
   for sw in "${SWITCHES[@]}"; do
     kathara exec -d "$LAB_DIR" "$sw" -- sh -lc "pkill -TERM tcpdump 2>/dev/null || true" >/dev/null 2>&1 || true
   done

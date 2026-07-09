@@ -1,0 +1,4 @@
+table_clear thumbprint_table
+table_add thumbprint_table NoAction 0xd9594c96472d762268d488125fe3f1e29a8a9f8f =>
+table_add thumbprint_table NoAction 0xc2771027dd61d23dd162bcfa5d8e5403a984f019 =>
+table_dump thumbprint_table

@@ -1,0 +1,3 @@
+run=1 variant=ip_forward
+run=1 variant=opcua_forward
+run=1 variant=extraction

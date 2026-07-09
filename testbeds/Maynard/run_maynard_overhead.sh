@@ -252,7 +252,9 @@ wait_for_switch_capture() {
 }
 
 stop_switch_capture() {
-  kathara exec -d "$LAB_DIR" --wait s1 -- sh -lc "pkill -TERM tcpdump 2>/dev/null || true; sleep 2; pkill -KILL tcpdump 2>/dev/null || true" >/dev/null 2>&1 || true
+  # Ingress captures first, then egress after a settle: killing all at once
+  # records ingress packets whose egress copy was never captured (fake drops).
+  kathara exec -d "$LAB_DIR" --wait s1 -- sh -lc "pkill -TERM -f 'tcpdump.*Q in' 2>/dev/null || true; sleep 2; pkill -TERM tcpdump 2>/dev/null || true; sleep 2; pkill -KILL tcpdump 2>/dev/null || true" >/dev/null 2>&1 || true
 }
 
 stop_replays() {

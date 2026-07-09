@@ -1,0 +1,11 @@
+maude tool: 'maude'
+ checking version: 3.1. OK.
+ checking installation: OK.
+Deprecation Warning: using 'axiom' is retired notation, replace all uses of 'axiom' by 'restriction'.
+[Theory OPCUA_GDS_Bootstrap_Push_Pull_Attacks] Theory loaded
+[Theory OPCUA_GDS_Bootstrap_Push_Pull_Attacks] Theory translated
+[Theory OPCUA_GDS_Bootstrap_Push_Pull_Attacks] Derivation checks started
+[Theory OPCUA_GDS_Bootstrap_Push_Pull_Attacks] Derivation checks ended
+[Theory OPCUA_GDS_Bootstrap_Push_Pull_Attacks] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done

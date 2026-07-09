@@ -46,7 +46,7 @@ FROM ${base}
 EOD
   write_iproute_layer >> "$TMP_DIR/Dockerfile"
   if [[ "$strip_entrypoint" == "strip-entrypoint" ]]; then
-    echo 'ENTRYPOINT []' >> "$TMP_DIR/Dockerfile"
+    printf 'ENTRYPOINT []\nCMD ["/bin/bash"]\n' >> "$TMP_DIR/Dockerfile"
   fi
   docker build -t "$tag" "$TMP_DIR"
 }
@@ -72,7 +72,7 @@ COPY plc.crt.der /opt/otsec/certs/plc.crt.der
 RUN chmod 0644 /opt/otsec/certs/telegraf.crt /opt/otsec/certs/plc.crt.der && chmod 0640 /opt/otsec/certs/telegraf.key
 EOD
   write_iproute_layer >> "$ctx/Dockerfile"
-  echo 'ENTRYPOINT []' >> "$ctx/Dockerfile"
+  printf 'ENTRYPOINT []\nCMD ["/bin/bash"]\n' >> "$ctx/Dockerfile"
   docker build -t telegraf:kathara-net "$ctx"
 }
 
@@ -95,7 +95,7 @@ COPY industrial-process.pem /usr/src/simulator/industrial-process.pem
 COPY telegraf.der /usr/src/simulator/telegraf.der
 EOD
   write_iproute_layer >> "$ctx/Dockerfile"
-  echo 'ENTRYPOINT []' >> "$ctx/Dockerfile"
+  printf 'ENTRYPOINT []\nCMD ["/bin/bash"]\n' >> "$ctx/Dockerfile"
   docker build -t ot-industrial-process:kathara-net "$ctx"
 }
 
@@ -126,7 +126,7 @@ COPY ca.crt.der /workdir/OpenPLC_v3/etc/PKI/trusted/certs/ca.crt.der
 COPY ca.crl /workdir/OpenPLC_v3/etc/PKI/trusted/crl/ca.crl
 EOD
   write_iproute_layer >> "$ctx/Dockerfile"
-  echo 'ENTRYPOINT []' >> "$ctx/Dockerfile"
+  printf 'ENTRYPOINT []\nCMD ["/bin/bash"]\n' >> "$ctx/Dockerfile"
   docker build -t ot-openplc:kathara-net "$ctx"
 }
 

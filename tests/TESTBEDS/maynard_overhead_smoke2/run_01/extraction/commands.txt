@@ -1,0 +1,8 @@
+table_add dmac_forward forward_to_port 08:00:27:97:89:0c => 1
+table_add dmac_forward forward_to_port 08:00:27:69:49:03 => 1
+table_add dmac_forward forward_to_port 08:00:27:50:76:7c => 1
+table_add dmac_forward forward_to_port 08:00:27:b0:f2:fb => 1
+table_add dmac_forward forward_to_port 08:00:27:ff:25:2e => 1
+table_add dmac_forward forward_to_port 08:00:27:1a:6c:17 => 2
+table_add thumbprint_table NoAction 0x3b4f235b310f805e2f0a645c62fcd73de8bc34c2 =>
+table_add thumbprint_table NoAction 0xdb471ccf9ac61456964febf4b692d16b1447f7fb =>

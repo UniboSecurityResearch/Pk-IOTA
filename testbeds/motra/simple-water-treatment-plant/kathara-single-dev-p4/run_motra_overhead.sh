@@ -163,6 +163,14 @@ start_captures() {
 }
 
 stop_captures() {
+  # Stop the INGRESS captures first and give in-flight packets time to exit:
+  # killing everything at once records ingress packets whose egress copy the
+  # already-dead egress tcpdump never saw, which shows up as a fake drop.
+  local sw
+  for sw in "${SWITCHES[@]}"; do
+    kathara exec -d "$LAB_DIR" "$sw" -- sh -lc "pkill -f 'tcpdump.*Q in' >/dev/null 2>&1 || true" >/dev/null 2>&1 || true
+  done
+  sleep 2
   for sw in "${SWITCHES[@]}"; do
     kathara exec -d "$LAB_DIR" "$sw" -- pkill tcpdump >/dev/null 2>&1 || true
   done

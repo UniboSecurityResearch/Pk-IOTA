@@ -1,0 +1,6 @@
+table_add dmac_forward forward_to_port 08:00:27:97:89:0c => 1
+table_add dmac_forward forward_to_port 08:00:27:69:49:03 => 1
+table_add dmac_forward forward_to_port 08:00:27:50:76:7c => 1
+table_add dmac_forward forward_to_port 08:00:27:b0:f2:fb => 1
+table_add dmac_forward forward_to_port 08:00:27:ff:25:2e => 1
+table_add dmac_forward forward_to_port 08:00:27:1a:6c:17 => 2

@@ -1,0 +1,9 @@
+table_add dmac_forward forward_to_port 02:11:00:00:00:11 => 1
+table_add dmac_forward forward_to_port 02:11:00:00:00:12 => 2
+table_add dmac_forward forward_to_port 02:11:00:00:00:13 => 3
+table_add dmac_forward forward_to_port 02:11:00:00:00:14 => 4
+table_add dmac_forward forward_to_port 02:11:00:00:00:20 => 5
+table_add dmac_forward forward_to_port 02:11:00:00:00:21 => 6
+table_add dmac_forward forward_to_port 02:11:00:00:00:22 => 7
+table_add dmac_forward forward_to_port 02:11:00:00:00:23 => 8
+table_add dmac_forward forward_to_port 02:11:00:00:00:24 => 9
