@@ -115,6 +115,16 @@ build_openplc_wrapper() {
 
   cat > "$ctx/Dockerfile" <<'EOD'
 FROM ot-openplc:latest
+# OpenPLC's requirements.txt pins Flask 1.x but not its transitive deps, so the
+# base build pulls Werkzeug/Jinja2 versions that removed APIs Flask 1.x imports
+# (e.g. werkzeug.urls.url_quote) and the webserver dies at import time.
+# Pin the last compatible set here (wrapper rebuild is cheap, base is not).
+RUN python3 -m pip install --break-system-packages --no-cache-dir \
+      'werkzeug==2.0.3' \
+      'jinja2==3.0.3' \
+      'itsdangerous==2.0.1' \
+      'markupsafe==2.0.1' \
+      'click==8.0.4'
 RUN mkdir -p \
       /workdir/OpenPLC_v3/etc/PKI/own/certs \
       /workdir/OpenPLC_v3/etc/PKI/own/private \
