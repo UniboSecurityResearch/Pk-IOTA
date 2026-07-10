@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -450,6 +451,18 @@ def run_report(
     print(f"Generated: {output_dir / 'quality.csv'}")
     print(f"Generated: {output_dir / 'report.md'}")
 
-    if quality_failed and fail_on_quality:
-        return False
+    if quality_failed:
+        # Say WHY on the console: campaign logs must be self-explanatory, the
+        # exit code alone sends people digging through quality.csv.
+        for row in quality_rows:
+            if row["status"] == "pass":
+                continue
+            dims_desc = " ".join(f"{name}={row.get(name, '')}" for name in dim_names)
+            print(
+                f"QUALITY FAIL: run={row['run_index']} {dims_desc} reasons={row['reasons']}".replace("  ", " "),
+                file=sys.stderr,
+            )
+        if fail_on_quality:
+            print("Exiting non-zero because --fail-on-quality is set.", file=sys.stderr)
+            return False
     return True

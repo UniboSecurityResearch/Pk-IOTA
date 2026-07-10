@@ -29,4 +29,12 @@ fi
 # Kathara does not run the image ENTRYPOINT: start OpenPLC (OPC UA server on
 # tcp/4840) explicitly or no OPC UA traffic ever exists in this lab.
 cd /workdir/OpenPLC_v3
+
+# The OPC UA server ([opcuaserver] in config.ini) only runs while the PLC
+# RUNTIME runs, and the webserver starts the runtime at boot only when
+# Start_run_mode is 'true' in the settings DB (default 'false', i.e. someone
+# must press Start in the web UI). Flip it so the lab is autonomous.
+sqlite3 /workdir/OpenPLC_v3/etc/openplc.db \
+  "UPDATE Settings SET Value='true' WHERE Key='Start_run_mode';"
+
 nohup ./start_openplc.sh > /shared/openplc.log 2>&1 &
