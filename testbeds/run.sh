@@ -1,4 +1,3 @@
-cat run.sh 
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -32,6 +31,8 @@ Options:
   --skip-otsec              Skip OTSEC campaign
   --skip-cert-size          Skip 1client_1server cert-size campaign
   --skip-formal             Skip formal verification runs
+  --strict-quality          Fail a campaign if its analyzer quality gate fails
+                            (always on for --profile smoke; use for paper runs)
 
   --maynard-runs N          Override Maynard --runs
   --maynard-timeout SEC     Override Maynard --timeout
@@ -78,6 +79,7 @@ DO_OTSEC=1
 DO_CERT=1
 DO_FORMAL=1
 DO_SET_LAB_IMAGES=0
+DO_STRICT_QUALITY=0
 
 TCPREPLAY_IMAGE="loriringhio97/tcpreplay:v1"
 ASYNCUA_IMAGE="loriringhio97/asyncua:v1"
@@ -207,7 +209,13 @@ print_status() {
 
 run_preflight() {
   local missing=0
-  local cmds=(docker kathara python3 openssl capinfos tamarin-prover maude)
+  # tamarin-prover / maude are needed ONLY for the formal step. Requiring them
+  # unconditionally blocked testbed-only runs (--skip-formal) on hosts without
+  # Tamarin installed.
+  local cmds=(docker kathara python3 openssl capinfos)
+  if [[ "$DO_FORMAL" -eq 1 ]]; then
+    cmds+=(tamarin-prover maude)
+  fi
   log "Preflight toolchain checks"
   for c in "${cmds[@]}"; do
     if command -v "$c" >/dev/null 2>&1; then
@@ -224,14 +232,16 @@ run_preflight() {
 
   docker version >/dev/null
   kathara --version
-  tamarin-prover --version
-  maude --version
 
-  local maude_version
-  maude_version="$(maude --version 2>/dev/null | awk 'NR==1 {print $1}')"
-  if [[ "$maude_version" == "3.2" ]]; then
-    echo "WARNING: maude 3.2 is reported as unsupported by tamarin-prover checks." >&2
-    echo "         Prefer one of: 2.7.1, 3.0, 3.1, 3.2.1, 3.2.2, 3.3, 3.3.1, 3.4, 3.5" >&2
+  if [[ "$DO_FORMAL" -eq 1 ]]; then
+    tamarin-prover --version
+    maude --version
+    local maude_version
+    maude_version="$(maude --version 2>/dev/null | awk 'NR==1 {print $1}')"
+    if [[ "$maude_version" == "3.2" ]]; then
+      echo "WARNING: maude 3.2 is reported as unsupported by tamarin-prover checks." >&2
+      echo "         Prefer one of: 2.7.1, 3.0, 3.1, 3.2.1, 3.2.2, 3.3, 3.3.1, 3.4, 3.5" >&2
+    fi
   fi
 }
 
@@ -431,7 +441,7 @@ run_build_otsec() {
 run_maynard_campaign() {
   local out="$RESULTS_DIR/maynard_overhead_${TAG}"
   local -a quality_args=(--require-same-ingress)
-  if [[ "$PROFILE" == "smoke" ]]; then
+  if [[ "$PROFILE" == "smoke" || "$DO_STRICT_QUALITY" -eq 1 ]]; then
     quality_args+=(--fail-on-quality)
   fi
   log "Running Maynard campaign -> $out"
@@ -454,7 +464,7 @@ run_maynard_campaign() {
 run_motra_campaign() {
   local out="$RESULTS_DIR/motra_overhead_${TAG}"
   local -a quality_args=(--require-extraction-opn-cert)
-  if [[ "$PROFILE" == "smoke" ]]; then
+  if [[ "$PROFILE" == "smoke" || "$DO_STRICT_QUALITY" -eq 1 ]]; then
     quality_args+=(--fail-on-quality)
   fi
   log "Running MOTRA campaign -> $out"
@@ -476,7 +486,7 @@ run_motra_campaign() {
 run_otsec_campaign() {
   local out="$RESULTS_DIR/otsec_overhead_${TAG}"
   local -a quality_args=(--require-extraction-opn-cert)
-  if [[ "$PROFILE" == "smoke" ]]; then
+  if [[ "$PROFILE" == "smoke" || "$DO_STRICT_QUALITY" -eq 1 ]]; then
     quality_args+=(--fail-on-quality)
   fi
   log "Running OTSEC campaign -> $out"
@@ -500,7 +510,7 @@ run_otsec_campaign() {
 run_cert_campaign() {
   local out="$RESULTS_DIR/cert_size_overhead_${TAG}"
   local -a quality_args=(--require-extraction-opn-cert)
-  if [[ "$PROFILE" == "smoke" ]]; then
+  if [[ "$PROFILE" == "smoke" || "$DO_STRICT_QUALITY" -eq 1 ]]; then
     quality_args+=(--fail-on-quality)
   fi
   log "Running 1client_1server cert-size campaign -> $out"
@@ -600,6 +610,7 @@ while [[ $# -gt 0 ]]; do
     --skip-otsec) DO_OTSEC=0; shift ;;
     --skip-cert-size) DO_CERT=0; shift ;;
     --skip-formal) DO_FORMAL=0; shift ;;
+    --strict-quality) DO_STRICT_QUALITY=1; shift ;;
 
     --maynard-runs) MAYNARD_RUNS="${2:-}"; shift 2 ;;
     --maynard-timeout) MAYNARD_TIMEOUT="${2:-}"; shift 2 ;;

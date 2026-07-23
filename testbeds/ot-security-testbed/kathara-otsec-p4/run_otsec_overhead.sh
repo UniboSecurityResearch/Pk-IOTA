@@ -171,10 +171,10 @@ cleanup() {
 trap cleanup EXIT
 
 clear_shared_captures() {
-  rm -f "$LAB_DIR/shared"/s_*_eth*_in.pcap "$LAB_DIR/shared"/s_*_eth*_out.pcap
-  rm -f "$LAB_DIR/shared"/s_*_eth*_in.tcpdump.log "$LAB_DIR/shared"/s_*_eth*_out.tcpdump.log
-  rm -f "$LAB_DIR/shared"/s_*_eth*_any.pcap "$LAB_DIR/shared"/s_*_eth*_any.tcpdump.log
-  rm -f "$LAB_DIR/shared"/s_*_eth*_in.pid "$LAB_DIR/shared"/s_*_eth*_out.pid "$LAB_DIR/shared"/s_*_eth*_any.pid
+  rm -f "$LAB_DIR/shared"/s1_eth*_in.pcap "$LAB_DIR/shared"/s1_eth*_out.pcap
+  rm -f "$LAB_DIR/shared"/s1_eth*_in.tcpdump.log "$LAB_DIR/shared"/s1_eth*_out.tcpdump.log
+  rm -f "$LAB_DIR/shared"/s1_eth*_any.pcap "$LAB_DIR/shared"/s1_eth*_any.tcpdump.log
+  rm -f "$LAB_DIR/shared"/s1_eth*_in.pid "$LAB_DIR/shared"/s1_eth*_out.pid "$LAB_DIR/shared"/s1_eth*_any.pid
   rm -f "$LAB_DIR/shared"/telegraf_once.log "$LAB_DIR/shared"/tcp_stimulate.log
   rm -f "$LAB_DIR/shared"/thumbprints.commands
 }
@@ -425,7 +425,7 @@ write_capture_summary() {
 
   {
     printf 'file\tsize_bytes\tpackets\n'
-    for f in "$run_dir"/s_*_eth*.pcap; do
+    for f in "$run_dir"/s1_eth*.pcap; do
       [[ -f "$f" ]] || continue
       size="$(stat -c %s "$f" 2>/dev/null || echo 0)"
       packets="$(packet_count "$f")"
@@ -549,7 +549,7 @@ sleep_with_progress() {
 }
 
 stimulate_traffic() {
-  echo "  phase: stimulate OPC UA traffic (telegraf --once loop + tcp probes)"
+  echo "  phase: stimulate OPC UA traffic (telegraf --once loop)"
   STIM_JOBS=()
 
   # A single `telegraf --once` is a ~1s burst: it opens ONE fresh secure channel
@@ -581,54 +581,12 @@ stimulate_traffic() {
   ) &
   STIM_JOBS+=("$!")
 
-  (
-    if command -v timeout >/dev/null 2>&1; then
-      timeout 90s kathara exec -d "$LAB_DIR" attacker -- sh -lc '
-        {
-          echo "[stim] start $(date -Iseconds)"
-          for target in openplc plc industrial-process industrial_process 10.11.0.21 10.11.0.20; do
-            echo "[stim] resolving/probing $target"
-            getent hosts "$target" 2>/dev/null || true
-          done
-          i=0
-          while [ "$i" -lt 40 ]; do
-            for target in openplc plc industrial-process industrial_process 10.11.0.21 10.11.0.20; do
-              if command -v nc >/dev/null 2>&1; then
-                nc -vz -w 1 "$target" 4840 || true
-              elif command -v bash >/dev/null 2>&1; then
-                # Expand $target here (the intermediate sh), not $0: the previous
-                # form let sh expand $0 to "sh" so bash tried /dev/tcp/sh/4840.
-                bash -c "exec 3<>/dev/tcp/$target/4840; exec 3>&-; exec 3<&-" || true
-              else
-                echo "[stim] no nc/bash available for TCP probe"
-              fi
-            done
-            i=$((i + 1))
-            sleep 1
-          done
-          echo "[stim] end $(date -Iseconds)"
-        } >/shared/tcp_stimulate.log 2>&1
-      ' >/dev/null 2>&1 || true
-    else
-      kathara exec -d "$LAB_DIR" attacker -- sh -lc '
-        {
-          echo "[stim] start $(date -Iseconds)"
-          i=0
-          while [ "$i" -lt 40 ]; do
-            if command -v nc >/dev/null 2>&1; then
-              nc -z -w 1 openplc 4840 >/dev/null 2>&1 || true
-            elif command -v bash >/dev/null 2>&1; then
-              bash -lc "exec 3<>/dev/tcp/openplc/4840; exec 3>&-; exec 3<&-" >/dev/null 2>&1 || true
-            fi
-            i=$((i + 1))
-            sleep 1
-          done
-          echo "[stim] end $(date -Iseconds)"
-        } >/shared/tcp_stimulate.log 2>&1
-      ' >/dev/null 2>&1 || true
-    fi
-  ) &
-  STIM_JOBS+=("$!")
+  # NOTE: no bare-TCP "attacker" probe here. It produced only SYN/RST (it never
+  # speaks OPC UA, so it is not a certificate source) and, worse, probing
+  # endpoints that do not listen on 4840 (industrial-process) generated
+  # connection-refused RSTs that tripped the analyzer's quality gate
+  # (rst_total>0). The overhead measurement must see only the legitimate OPC UA
+  # traffic; a rogue-connection scenario is a separate effectiveness experiment.
 
   echo "  stimulation launched in background"
 }
@@ -803,14 +761,14 @@ run_variant_once() {
 
   local found_in=0
   local found_out=0
-  for f in "$run_dir"/s_*_eth*_in.pcap; do
+  for f in "$run_dir"/s1_eth*_in.pcap; do
     [[ -f "$f" ]] || continue
     if pcap_has_packets "$f"; then
       found_in=1
       break
     fi
   done
-  for f in "$run_dir"/s_*_eth*_out.pcap; do
+  for f in "$run_dir"/s1_eth*_out.pcap; do
     [[ -f "$f" ]] || continue
     if pcap_has_packets "$f"; then
       found_out=1
@@ -819,7 +777,7 @@ run_variant_once() {
   done
   if [[ "$found_in" -ne 1 || "$found_out" -ne 1 ]]; then
     local found_any=0
-    for f in "$run_dir"/s_*_eth*_any.pcap; do
+    for f in "$run_dir"/s1_eth*_any.pcap; do
       [[ -f "$f" ]] || continue
       if pcap_has_packets "$f"; then
         found_any=1
@@ -835,7 +793,7 @@ run_variant_once() {
     echo "Capture mode used: $CAPTURE_MODE_USED" >&2
     echo "Inspect: $run_dir/capture_summary.tsv" >&2
     echo "Inspect service snapshots: $run_dir/*_runtime.log" >&2
-    echo "Inspect stimulus logs: $run_dir/telegraf_once.log and $run_dir/tcp_stimulate.log" >&2
+    echo "Inspect stimulus log: $run_dir/telegraf_once.log" >&2
     ls -la "$LAB_DIR/shared" >&2 || true
     maybe_collect_diagnostics "$run_dir" "missing-directional-pcaps"
     run_lclean
@@ -848,7 +806,7 @@ run_variant_once() {
   if [[ "$v" == "extraction" ]]; then
     local extractor="$LAB_DIR/../../extract_opcua_thumbprints.py"
     local -a in_pcaps=()
-    for f in "$run_dir"/s_*_eth*_in.pcap "$run_dir"/s1_eth*_in.pcap; do
+    for f in "$run_dir"/s1_eth*_in.pcap; do
       [[ -f "$f" ]] || continue
       in_pcaps+=("$f")
     done

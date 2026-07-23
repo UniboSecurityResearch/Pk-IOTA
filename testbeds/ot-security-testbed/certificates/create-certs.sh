@@ -205,7 +205,8 @@
 
 function prepare() {
     mkdir -p ca applications
-    rm index.txt crlnumber
+    # -f: these do not exist on a fresh checkout (the CA state is generated here)
+    rm -f index.txt crlnumber
     touch index.txt
     echo "1000" > crlnumber
 }

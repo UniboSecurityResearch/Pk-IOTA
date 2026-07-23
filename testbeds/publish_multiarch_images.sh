@@ -172,6 +172,7 @@ build_push() {
 build_wrapper_from_base() {
   local base_img="$1"
   local out_img="$2"
+  local strip_entrypoint="${3:-}"
   local tmp
   tmp="$(mktemp -d)"
 
@@ -194,6 +195,60 @@ RUN set -eux; \
       exit 1; \
     fi; \
     if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi
+EOF
+
+  # Kathara keeps the image ENTRYPOINT as PID1 (it only overrides CMD). Images
+  # whose entrypoint IS the app (telegraf, influxdb, shellinabox) would run it
+  # before the .startup configures the network and crash the container. Reset
+  # the entrypoint so the .startup launches the service. Must match
+  # testbeds/ot-security-testbed/kathara-otsec-p4/build_kathara_images.sh.
+  if [[ "$strip_entrypoint" == "strip-entrypoint" ]]; then
+    printf 'ENTRYPOINT []\nCMD ["/bin/bash"]\n' >> "$tmp/Dockerfile"
+  fi
+
+  build_push "$out_img" "$tmp/Dockerfile" "$tmp"
+  rm -rf "$tmp"
+}
+
+# Telegraf OTSEC wrapper: bakes the telegraf certs (for Basic256Sha256) AND
+# resets the entrypoint, matching build_kathara_images.sh:build_telegraf_wrapper.
+build_otsec_telegraf_wrapper_from_base() {
+  local base_img="$1"
+  local out_img="$2"
+  local cert_dir="$ROOT_DIR/testbeds/ot-security-testbed/certificates"
+  local tmp
+
+  if [[ "$SKIP_EXISTING" -eq 1 && "$DRY_RUN" -eq 0 ]] && remote_image_has_all_requested_platforms "$out_img"; then
+    log "Skipping existing image with requested platforms: $out_img"
+    return 0
+  fi
+
+  require_otsec_cert "$cert_dir/applications/telegraf.crt"
+  require_otsec_cert "$cert_dir/applications/telegraf.key"
+  require_otsec_cert "$cert_dir/applications/plc.crt.der"
+
+  tmp="$(mktemp -d)"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    cp "$cert_dir/applications/telegraf.crt" "$tmp/telegraf.crt"
+    cp "$cert_dir/applications/telegraf.key" "$tmp/telegraf.key"
+    cp "$cert_dir/applications/plc.crt.der" "$tmp/plc.crt.der"
+  fi
+
+  cat > "$tmp/Dockerfile" <<EOF
+FROM ${base_img}
+RUN mkdir -p /opt/otsec/certs
+COPY telegraf.crt /opt/otsec/certs/telegraf.crt
+COPY telegraf.key /opt/otsec/certs/telegraf.key
+COPY plc.crt.der /opt/otsec/certs/plc.crt.der
+RUN chmod 0644 /opt/otsec/certs/telegraf.crt /opt/otsec/certs/plc.crt.der && chmod 0640 /opt/otsec/certs/telegraf.key
+RUN set -eux; \
+    if command -v apt-get >/dev/null 2>&1; then \
+      apt-get update && apt-get install -y --no-install-recommends iproute2 && rm -rf /var/lib/apt/lists/*; \
+    elif command -v apk >/dev/null 2>&1; then \
+      apk add --no-cache iproute2; \
+    fi
+ENTRYPOINT []
+CMD ["/bin/bash"]
 EOF
 
   build_push "$out_img" "$tmp/Dockerfile" "$tmp"
@@ -257,6 +312,8 @@ RUN set -eux; \
       exit 1; \
     fi; \
     if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi
+ENTRYPOINT []
+CMD ["/bin/bash"]
 EOF
 
   build_push "$out_img" "$tmp/Dockerfile" "$tmp"
@@ -315,6 +372,18 @@ RUN set -eux; \
       exit 1; \
     fi; \
     if [ -f /entrypoint.sh ]; then chmod +x /entrypoint.sh; fi
+# OpenPLC's requirements.txt pins Flask 1.x but not Werkzeug/Jinja2; the base
+# build otherwise pulls versions that removed APIs Flask 1.x imports
+# (werkzeug.urls.url_quote) and the webserver dies at import. Pin the last
+# compatible set. Matches build_kathara_images.sh:build_openplc_wrapper.
+RUN python3 -m pip install --break-system-packages --no-cache-dir \
+      'werkzeug==2.0.3' 'jinja2==3.0.3' 'itsdangerous==2.0.1' 'markupsafe==2.0.1' 'click==8.0.4' || \
+    python3 -m pip install --no-cache-dir \
+      'werkzeug==2.0.3' 'jinja2==3.0.3' 'itsdangerous==2.0.1' 'markupsafe==2.0.1' 'click==8.0.4'
+# Kathara keeps the ENTRYPOINT; OpenPLC's entrypoint would run as PID1 before
+# the .startup configures the network. Reset it (the .startup launches OpenPLC).
+ENTRYPOINT []
+CMD ["/bin/bash"]
 EOF
 
   build_push "$out_img" "$tmp/Dockerfile" "$tmp"
@@ -483,8 +552,12 @@ fi
 if [[ "$DO_OTSEC_WRAP" -eq 1 ]]; then
   log "Publishing OTSEC kathara-net wrapper images"
 
-  build_wrapper_from_base "telegraf:1.21.4" "$IMG_OTSEC_TELEGRAF_WRAP"
-  build_wrapper_from_base "influxdb:1.8.10" "$IMG_OTSEC_INFLUXDB_WRAP"
+  # telegraf/influxdb/shellinabox run their app as the image ENTRYPOINT, which
+  # Kathara would launch as PID1 before the .startup configures the network;
+  # they need the entrypoint reset. telegraf additionally needs its certs baked.
+  # chronograf/kapacitor/fuxa/attacker keep their entrypoints (harmless/idle).
+  build_otsec_telegraf_wrapper_from_base "telegraf:1.21.4" "$IMG_OTSEC_TELEGRAF_WRAP"
+  build_wrapper_from_base "influxdb:1.8.10" "$IMG_OTSEC_INFLUXDB_WRAP" strip-entrypoint
   build_wrapper_from_base "chronograf:1.9.4" "$IMG_OTSEC_CHRONOGRAF_WRAP"
   build_wrapper_from_base "kapacitor:1.6.4" "$IMG_OTSEC_KAPACITOR_WRAP"
 
@@ -492,7 +565,7 @@ if [[ "$DO_OTSEC_WRAP" -eq 1 ]]; then
   build_otsec_openplc_wrapper_from_base "$IMG_OTSEC_OPENPLC" "$IMG_OTSEC_OPENPLC_WRAP"
   build_wrapper_from_base "$IMG_OTSEC_FUXA" "$IMG_OTSEC_FUXA_WRAP"
   build_wrapper_from_base "$IMG_OTSEC_ATTACKER" "$IMG_OTSEC_ATTACKER_WRAP"
-  build_wrapper_from_base "$IMG_OTSEC_SHELLINABOX" "$IMG_OTSEC_SHELLINABOX_WRAP"
+  build_wrapper_from_base "$IMG_OTSEC_SHELLINABOX" "$IMG_OTSEC_SHELLINABOX_WRAP" strip-entrypoint
 fi
 
 if [[ "$DO_MOTRA_BASE" -eq 1 ]]; then

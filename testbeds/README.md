@@ -31,16 +31,22 @@ This document explains the available testbeds, required images, and the exact co
 ## Dockerfiles in `testbeds/images`
 - `tcpreplay/`: minimal replay host image for Maynard.
 - `asyncua/`: minimal OPC UA host image for deterministic baseline tests.
-- `asyncua-toolbox/`: extended diagnostics image (`asyncua`, `cryptography`, `iperf3`, `hping3`, `tshark`).
 
-Use `asyncua-toolbox` when you need troubleshooting/traffic inspection. Use `asyncua` for lean, reproducible performance runs.
+Use `asyncua` for lean, reproducible performance runs.
 
 ## Prerequisites
-- Docker
-- Kathara
+- Docker (with `buildx` for `publish_multiarch_images.sh`)
+- Kathara — use the **VDE** network plugin (`kathara/katharanp_vde`) so the
+  collision domains pass jumbo frames (see "Deploying on a New Server" below)
 - Python 3
-- `capinfos` (`wireshark-common`)
-- Optional for formal checks: `tamarin-prover`, `maude`
+- `openssl` (certificate generation in every testbed)
+- `capinfos` (`wireshark-common`) — packet counting in the analyzers
+- `sqlite3` — only needed inside the OTSEC OpenPLC image (already installed
+  there); not required on the host
+- Only for the formal verification step (`run.sh` without `--skip-formal`):
+  `tamarin-prover` and a compatible `maude` (2.7.1, 3.0, 3.1, 3.2.1, 3.2.2, 3.3,
+  3.3.1, 3.4, 3.5 — NOT 3.2). `run.sh` requires these only when the formal step
+  is enabled.
 
 ## Deploying on a New Server (read before running campaigns)
 1. **Jumbo frames.** The cert-size campaign (and any extraction run with
@@ -161,6 +167,27 @@ python3 ./analyze_cert_size_overhead.py \
   --output-dir ../../tests/TESTBEDS/cert_size_overhead_main \
   --require-extraction-opn-cert
 ```
+
+## 5) Formal verification (Tamarin)
+Requires `tamarin-prover` and a compatible `maude` (see Prerequisites). `run.sh`
+runs these as its last step; to reproduce them standalone:
+```bash
+cd formal_verification/pk-iota
+
+# Main protocol model and the OpenSecureChannel attack model
+tamarin-prover --prove pk-iota.spthy
+tamarin-prover --prove opc_ua_open_secure_channel_attacks.spthy
+
+# GDS push/pull bootstrap lemmas (attack-existence, exists-trace)
+for L in Rogue_Client_exists_GDS_Push_Bootstrap Rogue_Server_exists_GDS_Push_Bootstrap \
+         Middleperson_exists_GDS_Push_Bootstrap Rogue_Client_exists_GDS_Pull_Bootstrap \
+         Rogue_Server_exists_GDS_Pull_Bootstrap Middleperson_exists_GDS_Pull_Bootstrap; do
+  tamarin-prover --prove="$L" gds.spthy
+done
+```
+Each lemma prints `verified` or `falsified`; see the paper for the intended
+result of each property. Note that `run.sh --skip-formal` skips this step, and
+`run.sh` only requires `tamarin-prover`/`maude` when the step is enabled.
 
 ---
 

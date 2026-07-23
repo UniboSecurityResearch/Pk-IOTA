@@ -178,3 +178,37 @@ virtualenv/
 
 # Local dependency clones (do not commit)
 testbeds/motra/motra-images/
+
+# --- Pk-IOTA campaign artifacts (generated; never commit) ---
+# Campaign outputs / bundles
+tests/TESTBEDS/
+tests/TESTBEDS.zip
+# Kathara shared/ capture outputs and runtime logs (keep shared/common_service.sh)
+testbeds/**/shared/*.pcap
+testbeds/**/shared/*.log
+testbeds/**/shared/*.pid
+testbeds/**/shared/*.commands
+testbeds/**/shared/*-certificate.der
+testbeds/**/shared/certs_export/
+# p4c compiler output
+testbeds/**/*.p4i
+testbeds/**/s1/active.json
+testbeds/**/s1/opcua_extraction.json
+testbeds/**/s_*/active.json
+# Runner backup files created during a run
+testbeds/**/.*.original.overhead*
+testbeds/**/.replay_startups.original.overhead/
+# Per-run private keys copied into host dirs (regenerated each run)
+testbeds/1client_1server/h1/client-private-key.pem
+testbeds/1client_1server/h2/server-private-key.pem
+testbeds/1client_1server/**/certificates/trusted/certs/*.der
+# Node build cache
+**/.eslintcache
+
+# --- Secrets: private keys must never be committed ---
+# (These were committed historically; untracked here. ROTATE them and scrub
+#  git history — removal from HEAD does not remove them from past commits.)
+IOTA_src/mqtt/jwtRS256.key
+IOTA_src/mqtt/out.key
+# Safety net: never auto-add raw private keys anywhere in the tree.
+*.key

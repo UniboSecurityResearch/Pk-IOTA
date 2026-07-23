@@ -1,4 +1,8 @@
 /* -*- P4_16 -*- */
+/* EXPERIMENTAL / NON-CANONICAL. Not used by any testbed campaign; kept only as
+ * a reference variant (IPv4 LPM forwarding). The canonical, maintained OPC UA
+ * extraction program is testbeds/<lab>/s1/opcua_extraction.p4 — use that for
+ * any result. This copy may diverge and is not validated. */
 #include <core.p4>
 #include <v1model.p4>
 
