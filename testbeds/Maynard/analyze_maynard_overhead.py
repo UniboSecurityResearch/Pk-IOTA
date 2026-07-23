@@ -45,6 +45,7 @@ def main() -> int:
         dim_names=(),
         fail_on_quality=args.fail_on_quality,
         max_drop_pct=args.max_drop_pct,
+        max_rst_pct=args.max_rst_pct,
         require_extraction_opn_cert=args.require_extraction_opn_cert,
         require_same_ingress=args.require_same_ingress,
     )

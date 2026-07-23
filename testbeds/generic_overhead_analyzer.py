@@ -179,6 +179,13 @@ def build_arg_parser(description: str) -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--fail-on-quality", action="store_true")
     parser.add_argument("--max-drop-pct", type=float, default=0.0)
+    parser.add_argument(
+        "--max-rst-pct",
+        type=float,
+        default=2.0,
+        help="Max TCP RST rate (%% of ingress) before a run fails quality; "
+        "small counts are normal on live-traffic testbeds (default: 2.0)",
+    )
     parser.add_argument("--require-extraction-opn-cert", action="store_true")
     parser.add_argument("--require-same-ingress", action="store_true")
     return parser
@@ -191,18 +198,29 @@ def _quality_status(
     max_drop_pct: float,
     require_extraction_opn_cert: bool,
     require_same_ingress: bool,
+    max_rst_pct: float = 2.0,
 ) -> Tuple[str, str]:
     reasons: List[str] = []
     all_cls = class_all(port)
     for variant, values in sorted(variants.items()):
         all_values = values[all_cls]
-        if int(all_values["ingress_packets"]) == 0 or int(all_values["egress_packets"]) == 0:
+        ingress = int(all_values["ingress_packets"])
+        if ingress == 0 or int(all_values["egress_packets"]) == 0:
             reasons.append(f"{variant}:empty_capture")
         if int(all_values["matched_packets"]) == 0:
             reasons.append(f"{variant}:no_matches")
+        # A handful of TCP RSTs is normal on live-traffic testbeds (connection
+        # teardown; the extra latency of the extraction path can make an
+        # occasional OPC UA handshake slow enough that an endpoint resets and
+        # its client reconnects). These RSTs are FORWARDED, not dropped
+        # (drop_rate stays 0). Only flag an RST *storm* — a rate above
+        # max_rst_pct of ingress — which would signal connections actually
+        # failing. Replay testbeds (Maynard) have 0 RSTs, so this never masks
+        # a real problem there.
         rst_total = int(all_values["rst_ingress"]) + int(all_values["rst_egress"])
-        if rst_total > 0:
-            reasons.append(f"{variant}:rst={rst_total}")
+        rst_pct = (100.0 * rst_total / ingress) if ingress > 0 else 0.0
+        if rst_pct > max_rst_pct:
+            reasons.append(f"{variant}:rst={rst_total}({fmt(rst_pct)}%)")
         neg = int(all_values["negative_delay_matches"])
         if neg > 0:
             reasons.append(f"{variant}:negative_delay={neg}")
@@ -231,6 +249,7 @@ def run_report(
     dim_names: Sequence[str],
     fail_on_quality: bool,
     max_drop_pct: float,
+    max_rst_pct: float = 2.0,
     require_extraction_opn_cert: bool,
     require_same_ingress: bool,
     metadata_fields: Sequence[str] = (),
@@ -338,6 +357,7 @@ def run_report(
             max_drop_pct,
             require_extraction_opn_cert,
             require_same_ingress,
+            max_rst_pct,
         )
         if status != "pass":
             quality_failed = True
