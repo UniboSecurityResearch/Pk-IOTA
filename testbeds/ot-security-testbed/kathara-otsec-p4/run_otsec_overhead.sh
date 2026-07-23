@@ -549,16 +549,34 @@ sleep_with_progress() {
 }
 
 stimulate_traffic() {
-  echo "  phase: stimulate OPC UA traffic (telegraf --once + tcp probes)"
+  echo "  phase: stimulate OPC UA traffic (telegraf --once loop + tcp probes)"
   STIM_JOBS=()
 
+  # A single `telegraf --once` is a ~1s burst: it opens ONE fresh secure channel
+  # (one OPN with the telegraf certificate) and exits, which races capture
+  # startup and gives the analyzer almost nothing to see. Run it in a loop for
+  # the whole capture window instead: every iteration is a NEW process => a NEW
+  # OpenSecureChannel => a fresh OPN-with-certificate on the wire, and the steady
+  # stream removes the start-up race. Mirrors MOTRA's continuous-traffic model.
+  local stim_seconds="$DURATION_SEC"
+  local remote_stim
+  remote_stim='
+    : > /shared/telegraf_once.log
+    end=$(( $(date +%s) + '"$stim_seconds"' ))
+    i=0
+    while [ "$(date +%s)" -lt "$end" ]; do
+      i=$(( i + 1 ))
+      echo "[telegraf-stim] iter $i $(date -Iseconds)" >> /shared/telegraf_once.log
+      telegraf --config /etc/telegraf/telegraf.conf --once >> /shared/telegraf_once.log 2>&1 || true
+      sleep 2
+    done
+    echo "[telegraf-stim] done iters=$i" >> /shared/telegraf_once.log
+  '
   (
     if command -v timeout >/dev/null 2>&1; then
-      timeout 45s kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
-        "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+      timeout "$((stim_seconds + 60))s" kathara exec -d "$LAB_DIR" telegraf -- sh -lc "$remote_stim" >/dev/null 2>&1 || true
     else
-      kathara exec -d "$LAB_DIR" telegraf -- sh -lc \
-        "telegraf --config /etc/telegraf/telegraf.conf --once >/shared/telegraf_once.log 2>&1" >/dev/null 2>&1 || true
+      kathara exec -d "$LAB_DIR" telegraf -- sh -lc "$remote_stim" >/dev/null 2>&1 || true
     fi
   ) &
   STIM_JOBS+=("$!")
@@ -578,7 +596,9 @@ stimulate_traffic() {
               if command -v nc >/dev/null 2>&1; then
                 nc -vz -w 1 "$target" 4840 || true
               elif command -v bash >/dev/null 2>&1; then
-                bash -lc "exec 3<>/dev/tcp/$0/4840; exec 3>&-; exec 3<&-" "$target" || true
+                # Expand $target here (the intermediate sh), not $0: the previous
+                # form let sh expand $0 to "sh" so bash tried /dev/tcp/sh/4840.
+                bash -c "exec 3<>/dev/tcp/$target/4840; exec 3>&-; exec 3<&-" || true
               else
                 echo "[stim] no nc/bash available for TCP probe"
               fi
